@@ -1,10 +1,16 @@
-;;; Model 1 for SP
+;;; -------------------------------------------------------------- ;;;
+;;; Model 1 for SP: Reitter model
+;;; -------------------------------------------------------------- ;;;
+;;; Simulates SP as an effect of declarative memory usage. Follows
+;;; the ideas of Reitter et al.
+;;; -------------------------------------------------------------- ;;;
 
 (clear-all)
 
-(define-model DeclSyntacticPriming
+(define-model declarative-sp
 
-(sgp :er t)
+(sgp :er t ; Enable randomness
+     )
   
 (chunk-type sentence
             string
@@ -14,12 +20,12 @@
             voice
             syntax-correct
             semantics-correct)
-
+  
 (chunk-type syntactic-structure
             voice
             language
             name)
-
+  
 (chunk-type picture
             agent
             object
@@ -31,7 +37,7 @@
 
 
 ;;; Example representation of "the nun chases the robber"
-
+  
 (add-dm (nun) (chase) (robber) (active) (passive) (yes)
         (no) (speech-production) (sentence-comprehension)
         (english)
@@ -58,19 +64,21 @@
         (speech-goal isa task
                      goal speech-production
                      done no)
-)
+        )
+
 ;; Comprehension
 
 (p parse-sentence
    =goal>
      isa task
      goal sentence-comprehension
-   ==>
+==>
 )
 
 ;; Production
 
 (p start-speech-production
+   "Prepares imaginal buffer and loads agent, oject, and verb in WM"
    =goal>
      isa task
      goal speech-production
@@ -97,6 +105,7 @@
 )
      
 (p retrieve-syntactic-structure
+   "Decides which structure to apply by retrieving it from memory"
    =goal>
      isa task
      goal speech-production
@@ -134,6 +143,7 @@
 )
 
 (p produce-sentence
+   "After retrieving a syntactic structures, you apply it"
    ?retrieval>
      state free
      buffer full
@@ -155,6 +165,7 @@
 )
 
 (p done-production
+   "After applying it, you are done"
    =imaginal>
      isa sentence
      agent =AGENT
@@ -170,7 +181,6 @@
    *goal>
      done yes
 )
-
 
 (goal-focus speech-goal)
 (set-buffer-chunk 'visual 'sentence1)
