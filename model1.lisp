@@ -7,57 +7,57 @@
 (sgp :er t)
   
 (chunk-type sentence
-			string
-			agent
-			object
-			verb
-			voice
-			syntax-correct
-			semantics-correct)
+            string
+            agent
+            object
+            verb
+            voice
+            syntax-correct
+            semantics-correct)
 
 (chunk-type syntactic-structure
-			voice
-			language
-			name)
+            voice
+            language
+            name)
 
 (chunk-type picture
-			agent
-			object
-			verb)
+            agent
+            object
+            verb)
 
 (chunk-type task
-			goal
-			done)
+            goal
+            done)
 
 
 ;;; Example representation of "the nun chases the robber"
 
 (add-dm (nun) (chase) (robber) (active) (passive) (yes)
-		(no) (speech-production) (sentence-comprehension)
-		(english)
-		(sentence1 isa sentence
-				   string "the nun chases the robber"
-				   agent nun
-				   verb chase
-				   object robber
-				   voice active
-				   syntax-correct yes
-				   semantics-correct yes)
-		(picture1 isa picture
-				  agent nun
-				  object robber
-				  verb chase)
-		(active-voice isa syntactic-structure
-					  voice active
-					  language english
-					  name active)
-		(passive-voice isa syntactic-structure
-					   voice passive
-					   language english
-					   name passive)
-		(speech-goal isa task
-					 goal speech-production
-					 done no)
+        (no) (speech-production) (sentence-comprehension)
+        (english)
+        (sentence1 isa sentence
+                   string "the nun chases the robber"
+                   agent nun
+                   verb chase
+                   object robber
+                   voice active
+                   syntax-correct yes
+                   semantics-correct yes)
+        (picture1 isa picture
+                  agent nun
+                  object robber
+                  verb chase)
+        (active-voice isa syntactic-structure
+                      voice active
+                      language english
+                      name active)
+        (passive-voice isa syntactic-structure
+                       voice passive
+                       language english
+                       name passive)
+        (speech-goal isa task
+                     goal speech-production
+                     done no)
 )
 ;; Comprehension
 
@@ -79,23 +79,23 @@
    =visual>
      isa picture
      agent =AGENT
-	 object =OBJECT
-	 verb =VERB
+     object =OBJECT
+     verb =VERB
    
    ?imaginal>
      state free
      buffer empty
  ==>
-   =visual>	 
+   =visual>  
    +imaginal>
      isa sentence
      agent =AGENT
-	 object =OBJECT
- 	 verb =VERB
-  	 syntax-correct yes
-	 semantics-correct yes
+     object =OBJECT
+     verb =VERB
+     syntax-correct yes
+     semantics-correct yes
 )
-	 
+     
 (p retrieve-syntactic-structure
    =goal>
      isa task
@@ -105,17 +105,17 @@
    =visual>
      isa picture
      agent =AGENT
-	 object =OBJECT
-	 verb =VERB
+     object =OBJECT
+     verb =VERB
 
    =imaginal>
      isa sentence
      agent =AGENT
-	 object =OBJECT
- 	 verb =VERB
-  	 syntax-correct yes
-	 semantics-correct yes
-	 voice nil
+     object =OBJECT
+     verb =VERB
+     syntax-correct yes
+     semantics-correct yes
+     voice nil
 
    ?imaginal>
      state free
@@ -147,8 +147,8 @@
      voice nil
 
    ?imaginal>
-     state free	 
-==>	 
+     state free  
+==>  
    *imaginal>
      isa sentence
      voice =VOICE
@@ -158,12 +158,12 @@
    =imaginal>
      isa sentence
      agent =AGENT
-	 object =OBJECT
- 	 verb =VERB
-  	 syntax-correct yes
-	 semantics-correct yes
+     object =OBJECT
+     verb =VERB
+     syntax-correct yes
+     semantics-correct yes
    - voice nil
-	 
+     
    =goal>
      done no
 ==>
