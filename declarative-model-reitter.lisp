@@ -31,9 +31,10 @@
 
 (clear-all)
 
-(define-model declarative-sp
+(define-model declarative-sp-reitter
 
-(sgp :er t ; Enable randomness
+(sgp :er t  ; Enable randomness
+     :esc t ; subsymbolic computations
      )
   
 (chunk-type sentence
@@ -253,22 +254,62 @@
 )
 
 
-(p done-production
+
+;;; Produce a sentence
+;;; For now, it simply says "active" or "passive", which makes it easy
+;;; to keep track.
+
+(p speak-active-sentence
    "After applying it, you are done"
    =imaginal>
      isa sentence
      noun1 =X
      noun2 =Y
-   - voice nil
+     voice active
      
    =goal>
      done no
+
+   ?vocal>
+     state free
+
 ==>
+     
    *goal>
      done yes
+
+   +vocal>
+     isa speak
+     cmd speak
+     string "active"
 )
 
-;;; Produce a sentence
+
+(p speak-passive-sentence
+   "After applying it, you are done"
+   =imaginal>
+     isa sentence
+     noun1 =X
+     noun2 =Y
+     voice passive
+     
+   =goal>
+     done no
+
+   ?vocal>
+     state free
+
+==>
+     
+   *goal>
+     done yes
+
+   +vocal>
+     isa speak
+     cmd speak
+     string "active"
+)
+
 
 
 (goal-focus speech-goal)
