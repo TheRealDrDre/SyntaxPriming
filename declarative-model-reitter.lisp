@@ -142,7 +142,6 @@
      isa task
      goal sentence-comprehension
      agent =AGENT
-     verb =VERB
      object =OBJECT 
      judgment pending
      done no
@@ -159,17 +158,18 @@
      object =OBJECT 
 )
 
-
 (p verify-semantics
 	"Load semantics of prime picture and compare to sentence"
 	=goal>
      isa task
      goal sentence-comprehension
+     agent =AGENT
+     object =OBJECT 
      judgment pending
      done no
 
     =visual>
-     isa sentence ??? ;;;how to read in sentence
+     isa sentence  ;??? how to read in sentence
      
     =imaginal>
      isa picture
@@ -191,7 +191,7 @@
  )
 
 (p retrieve-active-semantic-correct
-   "AC - semantically correct"
+   "retrieve active: AC - semantically correct"
 
    =goal>
      isa task
@@ -210,7 +210,7 @@
 
    =imaginal>
      isa sentence
-     voice nil
+     semantics-correct nil
 
    ?imaginal>
      state free  
@@ -220,11 +220,34 @@
      semantics-correct yes
 )
 
-;;; TODO:
+(p speak-correct
+   "After verifying it, you are done"
+   =imaginal>
+     isa sentence
+     semantics-correct yes
+     
+   =goal>
+     done no
+
+   ?vocal>
+     state free
+
+==>
+     
+   *goal>
+     done yes
+
+   +vocal>
+     isa speak
+     cmd speak
+     string "correct"
+)
+
+
+;;; TODO: other conditions
 (p retrieve-active-semantic-incorrect)
 (p retrieve-passive-semantic-correct)
 (p retrieve-passive-semantic-incorrect)
-   
 
 ;; Production
 
@@ -418,13 +441,15 @@
 )
 
 
-
+; see prime picture
 (goal-focus verify-goal)
 (set-buffer-chunk 'visual 'picture1)
 
+; read prime sentence
 (goal-focus verify-goal)
 (set-buffer-chunk 'visual 'senetnce1)
 
+; see target picture
 (goal-focus speech-goal)
 (set-buffer-chunk 'visual 'picture1)
 
