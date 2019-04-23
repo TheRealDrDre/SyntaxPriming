@@ -68,6 +68,7 @@
             verb
             object
             state
+            judgment
             done)
 
 
@@ -100,24 +101,130 @@
         (speech-goal isa task
                      goal speech-production
                      done no)
+        (verify-goal isa task
+                     goal sentence-comprehension
+                     done no)
         )
 
 ;; Sentence Comprehension and Verification
 
-(p start-verification
+(p interpret-primepicture
+   "Transforms a picture into a semantic representation"
    =goal>
      isa task
      goal sentence-comprehension
+     done no
+     agent nil
 
    =visual>
-     isa sentence
+     isa picture
+     agent =AGENT
+     object =OBJECT
+     verb =VERB
 
+   ?goal>
+     state free
+
+==>
+
+   =visual>
+
+   *goal>
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
+     judgment pending
+)
+
+(p start-verification
+   "Prepares imaginal buffer and loads agent, oject, and verb in WM"
+   =goal>
+     isa task
+     goal sentence-comprehension
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
+     judgment pending
+     done no
+     
    ?imaginal>
      state free
      buffer empty
-
  ==>
+
+   +imaginal>
+     isa picture
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
 )
+
+
+(p verify-semantics
+	"Load semantics of prime picture and compare to sentence"
+	=goal>
+     isa task
+     goal sentence-comprehension
+     judgment pending
+     done no
+
+    =visual>
+     isa sentence ??? ;;;how to read in sentence
+     
+    =imaginal>
+     isa picture
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
+
+   ?imaginal>
+     state free
+   
+   ?retrieval>
+     state free
+     buffer empty
+
+==>
+	+retrieval>
+     isa syntactic-structure
+     language english
+ )
+
+(p retrieve-active-semantic-correct
+   "AC - semantically correct"
+
+   =goal>
+     isa task
+     goal sentence-comprehension
+     agent =AGENT
+     object =OBJECT
+     done no
+   
+   ?retrieval>
+     state free
+     buffer full
+
+   =retrieval>
+     isa syntactic-structure
+     voice active
+
+   =imaginal>
+     isa sentence
+     voice nil
+
+   ?imaginal>
+     state free  
+==>  
+   *imaginal>
+     isa sentence
+     semantics-correct yes
+)
+
+;;; TODO:
+(p retrieve-active-semantic-incorrect)
+(p retrieve-passive-semantic-correct)
+(p retrieve-passive-semantic-incorrect)
+   
 
 ;; Production
 
@@ -312,7 +419,14 @@
 
 
 
+(goal-focus verify-goal)
+(set-buffer-chunk 'visual 'picture1)
+
+(goal-focus verify-goal)
+(set-buffer-chunk 'visual 'senetnce1)
+
 (goal-focus speech-goal)
 (set-buffer-chunk 'visual 'picture1)
+
 
 )
