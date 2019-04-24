@@ -68,7 +68,6 @@
             verb
             object
             state
-            judgment
             done)
 
 
@@ -76,6 +75,7 @@
   
 (add-dm (nun) (chase) (robber) (active) (passive) (yes)
         (no) (speech-production) (sentence-comprehension)
+        (verify-sentence-picture)
         (english) (drawing)
         (sentence1 isa sentence
                    string "the nun chases the robber"
@@ -101,14 +101,19 @@
         (speech-goal isa task
                      goal speech-production
                      done no)
-        (verify-goal isa task
+        (comprehend-goal isa task
                      goal sentence-comprehension
+                     done no)
+        (verify-goal isa task
+                     goal verify-sentence-picture
                      done no)
         )
 
 ;; Sentence Comprehension and Verification
+;;; picture -> put in goal buffer
+;;; sentence -> put in img buffer 
 
-(p interpret-primepicture
+(p interpret-prime-picture
    "Transforms a picture into a semantic representation"
    =goal>
      isa task
@@ -126,79 +131,54 @@
      state free
 
 ==>
-
-   =visual>
-
    *goal>
      agent =AGENT
      verb =VERB
      object =OBJECT 
-     judgment pending
 )
 
 (p start-verification
-   "Prepares imaginal buffer and loads agent, oject, and verb in WM"
+   "Transforms a picture into a semantic representation"
    =goal>
      isa task
      goal sentence-comprehension
      agent =AGENT
-     object =OBJECT 
-     judgment pending
-     done no
-     
-   ?imaginal>
-     state free
-     buffer empty
- ==>
-
-   +imaginal>
-     isa picture
-     agent =AGENT
      verb =VERB
      object =OBJECT 
-)
-
-(p verify-semantics
-	"Load semantics of prime picture and compare to sentence"
-	=goal>
-     isa task
-     goal sentence-comprehension
-     agent =AGENT
-     object =OBJECT 
-     judgment pending
      done no
 
-    =visual>
-     isa sentence  ;??? how to read in sentence
-     
-    =imaginal>
-     isa picture
-     agent =AGENT
-     verb =VERB
-     object =OBJECT 
+   ?goal>
+     state free
 
    ?imaginal>
-     state free
-   
-   ?retrieval>
      state free
      buffer empty
 
 ==>
-	+retrieval>
-     isa syntactic-structure
-     language english
- )
-
-(p retrieve-active-semantic-correct
-   "retrieve active: AC - semantically correct"
+   +imaginal>
+     isa semantics
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
 
    =goal>
      isa task
-     goal sentence-comprehension
-     agent =AGENT
-     object =OBJECT
-     done no
+     goal verify-sentence-picture
+)
+
+
+(p apply-correct-verification
+   =goal>
+     isa task
+      goal verify-sentence-picture
+      done no
+
+   =imaginal>
+     isa sentence
+      semantics-correct yes
+
+   ?imaginal>
+     state free
    
    ?retrieval>
      state free
@@ -207,23 +187,19 @@
    =retrieval>
      isa syntactic-structure
      voice active
-
-   =imaginal>
-     isa sentence
-     semantics-correct nil
-
-   ?imaginal>
-     state free  
 ==>  
    *imaginal>
-     isa sentence
+    isa sentence
+     voice active
      semantics-correct yes
 )
 
-(p speak-correct
-   "After verifying it, you are done"
+
+(p speak-correct-match
+   "After applying it, you are done"
    =imaginal>
      isa sentence
+     voice active
      semantics-correct yes
      
    =goal>
@@ -231,7 +207,6 @@
 
    ?vocal>
      state free
-
 ==>
      
    *goal>
@@ -240,14 +215,18 @@
    +vocal>
      isa speak
      cmd speak
-     string "correct"
+     string "yes"
 )
 
 
+
 ;;; TODO: other conditions
-(p retrieve-active-semantic-incorrect)
-(p retrieve-passive-semantic-correct)
-(p retrieve-passive-semantic-incorrect)
+;(p retrieve-active-semantic-incorrect)
+;(p retrieve-passive-semantic-correct)
+;(p retrieve-passive-semantic-incorrect)
+
+;(p apply-correct-verification)
+;(p speak-incorrect-match)
 
 ;; Production
 
@@ -442,16 +421,17 @@
 
 
 ; see prime picture
-(goal-focus verify-goal)
+(goal-focus comprehend-goal)
+;(set-buffer-chunk 'visual 'picture1)
 (set-buffer-chunk 'visual 'picture1)
+
 
 ; read prime sentence
-(goal-focus verify-goal)
-(set-buffer-chunk 'visual 'senetnce1)
+
 
 ; see target picture
-(goal-focus speech-goal)
-(set-buffer-chunk 'visual 'picture1)
+;(goal-focus speech-goal)
+;(set-buffer-chunk 'visual 'picture1)
 
 
 )
