@@ -5,6 +5,8 @@
 (sgp :er t  ; Enable randomness
      :esc t ; Subsymbolic computations
      :ul t  ; Utility learning
+     :ppm 1 ; Partial matching
+     :egs 1.5
      )
   
 (chunk-type sentence
@@ -42,8 +44,8 @@
             kind
             goal
             agent
-            verb
-            object
+            action
+            patient
             state
             done)
 
@@ -67,8 +69,9 @@
         (verify-sentence-picture)
         (english) (drawing)
         (sentence) (picture)
-        (wait) (active) (passive)
-        (sentence-plan)
+        (wait)
+        (undecided) (active) (passive)
+        (sentence-plan) 
 
         (wait-for-screen isa task
                          goal wait)
@@ -98,7 +101,7 @@
    =goal>
      goal wait
 ==>
-   -visual>   
+   =visual>   
    +goal>
      isa task
      goal sentence-comprehension
@@ -107,30 +110,93 @@
 
 ;;; Comprehend
 
-(p comprehend
+(p start-comprehension-plan
    =goal>
      isa task
      goal sentence-comprehension
      done no
 
+   =visual>
+     isa sentence
+     noun1 =N1
+     verb  =V
+     noun2 =N2
+     voice =VOICE
+     
    ?goal>
-     state free  
+     state free
+
+   ?imaginal>
+     state free
+     buffer empty
 ==>
-   *goal>
-     done yes
+   =visual>     
+   +imaginal>
+     isa sentence-plan
+     kind sentence-plan
+     noun1 =N1
+     verb  =V
+     noun2 =N2
+     voice =VOICE
+     completed no
 )
 
+(p prepare-semantics
+   =goal>
+     isa task
+     goal sentence-comprehension
+     done no
+
+   ?imaginal>
+     state free
+
+   =imaginal>
+     noun1 =N1
+     verb  =V
+     noun2 =N2
+     completed yes
+
+==>
+  *goal>
+    agent   =N1
+    action  =V
+    patient =N2
+    done yes
+)
 
 ;;; Done!
 
-(p stop-sentence-comprehension
+(p sentence-comprehension-no-error
    =goal>
      isa task
      goal sentence-comprehension
      done yes
-     
+
    ?goal>
-     state free  
+     state free
+
+   =visual>
+     kind sentence
+     syntax-correct yes
+==>
+   +goal>
+     isa task
+     goal wait
+   !stop!
+)
+
+(p sentence-comprehension-error
+   =goal>
+     isa task
+     goal sentence-comprehension
+     done yes
+
+   ?goal>
+     state free
+
+   =visual>
+     kind sentence
+     syntax-correct no
 ==>
    +goal>
      isa task
@@ -159,7 +225,7 @@
 
 ;;; Produce
 
-(p start-sentence-plan
+(p start-production-plan
    =visual>
      kind picture
      agent =N1
@@ -178,33 +244,43 @@
      isa sentence-plan
      kind sentence-plan
      noun1 =N1
-     verb =ACT
+     verb  =ACT
      noun2 =N2
+     voice undecided
+     completed no
 )
 
 (p apply-active-structure
    =imaginal>
      kind sentence-plan
-     voice nil
+     voice active
+     completed no
 
    ?imaginal>
      state free  
 ==>
    *imaginal>
      voice active
+     completed yes
 )
 
 
 (p apply-passive-structure
    =imaginal>
      kind sentence-plan
-     voice nil
+     voice passive
+     completed no
+     noun1 =N1
+     noun2 =N2
 
    ?imaginal>
      state free  
 ==>
    *imaginal>
      voice passive
+     completed yes
+     noun1 =N2
+     noun2 =N1
 )
 
 
@@ -216,7 +292,7 @@
 
    =imaginal>
      kind sentence-plan
-   - voice nil
+     completed yes
      
    ?goal>
      state free
@@ -286,5 +362,9 @@
 ;   !stop!  
 )
 
+(spp (sentence-comprehension-no-error :reward 10)
+     (sentence-comprehension-error :reward -10))
+
+(set-similarities (active undecided 0.5) (passive undecided 0.5))
 (goal-focus wait-for-screen)
 )

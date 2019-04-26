@@ -1,6 +1,13 @@
 ## ---------------------------------------------------------------- ##
 ## SYNTACTIC PRIMING MODEL MANAGEMENT AND INTERFACE
 ## ---------------------------------------------------------------- ##
+## Usage:
+##
+##   import sp
+##   s = sp.Simulation(n=25)
+##   s.simulate()
+##   s.data
+## ---------------------------------------------------------------- ##
 
 import actr
 import os
@@ -9,6 +16,7 @@ import random
 CONDITIONS =  ['AC', 'AI', 'PC', 'PI']
 
 class SP_Object():
+    """The root of all experiment objects"""
     CONDITIONS = ('AC', 'AI', 'PC', 'PI')
     pass
 
@@ -232,6 +240,7 @@ class Simulation(SP_Object):
                                             "record-response")
                 actr.remove_command("record-response")
 
+                
     def __repr__(self):
         return "<SMLTN (%s), N=%d>" % (self.model, self.n)
         
