@@ -114,7 +114,8 @@ def run_trial(sentence, picture):
     actr.run(time = 100)
 
     chunk_p = actr.define_chunks(picture.chunk_definition)[0]
-    actr.set_buffer_chunk('visual',
-                          chunk_p)
+    actr.schedule_set_buffer_chunk('visual',
+                                   chunk_p,
+                                   actr.mp_time() + 0.05)
     actr.run(time = 100)
     
