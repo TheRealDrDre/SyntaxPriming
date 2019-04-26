@@ -179,7 +179,8 @@ def load_trials(file="stimuli.txt"):
 
 
 class Simulation(SP_Object):
-    def __init__(self, model="pure-procedural.lisp", n=100):
+    def __init__(self, model="pure-procedural.lisp",
+                 n=100):
         self.model = model
         self.n = n
         self.data = {c : 0 for c in self.CONDITIONS}
@@ -188,7 +189,11 @@ class Simulation(SP_Object):
 
 
     def record_response(self, model, response):
-        """Records a response in the simulations"""
+        """
+Records whether an 'active' response was produced the 
+current simulations. Adds it to an internal count of 
+all active responses by condition
+        """
         if response == 'active':
             self.data[self.current_condition] += 1
 
@@ -209,19 +214,45 @@ class Simulation(SP_Object):
                                        actr.mp_time() + 0.05)
         actr.run(time = 10)
 
+        
+    def utility_offset(self, pname):
+        """Calculates an additional term for utility offset"""
+        # This offset term only works during the calculations
+        # of utilities for errors occurring in the active voice.
+        # The reason is that, in this condition, errors are likely
+        # detected before the production is selected, and thus
+        # partial matching should affect the RPE
+        if self.current_condition == "AI" and \
+           pname.lower() == "apply-active-structure":
+            #print("YEAH it's working")
+            return 4.125
+        else:
+            return 0.0
 
-    def simulate(self, trace=False):
+    
+    def simulate(self, trace=False, utility_offset=True):
+        """Runs SP simulations using real stimuli"""
+        # Function hook to modify the utility calculation
+        # (will add a mismatch penalty). Need to be defined
+        # before the model is loaded
+        
+        actr.add_command("parser-offset", self.utility_offset,
+                         "Calculates a mismatch penalty for AI condition")
+
         actr.load_act_r_model(self.model)
 
-        if not trace:
-            actr.set_parameter_value(":V", False)
         
         for condition in self.CONDITIONS:
             self.current_condition = condition
             subset = [t for t in self.trials if t.condition == condition]
             for j in range(self.n):
                 actr.reset()
-        
+
+                # Make the model silent in case
+                
+                if not trace:
+                    actr.set_parameter_value(":V", False)
+
                 # The model does not really need a visual interface,
                 # but the default AGI provides a virtual mic to record
                 # voice output.
@@ -230,18 +261,28 @@ class Simulation(SP_Object):
                                            height = 60,
                                            visible=False)
                 actr.install_device(win)
+
+                # Function hooks to record the model responses. 
+                
                 actr.add_command("record-response", self.record_response,
                                  "Accepts a response for the SP task")
                 actr.monitor_command("output-speech",
                                      "record-response")
+
+                
+                # Run a single trial in the given condition
                 
                 trial = random.choice(subset)
-                
                 run_trial(trial)
+
+                # Clean up the function hooks
                 
                 actr.remove_command_monitor("output-speech",
                                             "record-response")
                 actr.remove_command("record-response")
+                
+        # Removes the offset
+        actr.remove_command("parser-offset")
 
                 
     def __repr__(self):

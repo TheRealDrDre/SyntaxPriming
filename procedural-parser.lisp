@@ -8,11 +8,12 @@
 
 (define-model procedural-parser
 
-(sgp :er t  ; Enable randomness
-     :esc t ; Subsymbolic computations
-     :ul t  ; Utility learning
-     :ppm 1 ; Partial matching
-     :egs 1.5
+(sgp :er t     ; Enable randomness
+     :esc t    ; Subsymbolic computations
+     :ul t     ; Utility learning
+     :ppm 1    ; Partial matching
+     :egs 1.5  ; Noise
+     :utility-offsets "parser-offset"
      )
   
 (chunk-type sentence
@@ -87,13 +88,6 @@
 ;;; ACTIVE VS. PASSIVE SENTENCES
 ;;;
 
-;(p choose-active-voice
-;   ==>
-;   )
-
-;(p choose-passive-choice
-;   ==>
-;   )
 
 ;;; -------------------------------------------------------------- ;;;;
 ;;; SENTENCE COMPREHENSION
