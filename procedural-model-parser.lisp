@@ -1,8 +1,7 @@
 ;;; -------------------------------------------------------------- ;;;
-;;; Model 1 for SP: Reitter model
+;;; Model 3 for SP: The procedural interactive parser model
 ;;; -------------------------------------------------------------- ;;;
-;;; Simulates SP as an effect of declarative memory usage. Follows
-;;; the ideas of Reitter et al.
+;;; Simulates SP as an effect of procedural knowledge.
 ;;; -------------------------------------------------------------- ;;;
 ;;; Notes:
 ;;; The model should do something like
@@ -31,13 +30,15 @@
 
 (clear-all)
 
-(define-model declarative-sp-reitter
+(define-model procedural-parser
 
 (sgp :er t  ; Enable randomness
-     :esc t ; subsymbolic computations
+     :esc t ; Subsymbolic computations
+     :ul t  ; Utility learning
      )
   
 (chunk-type sentence
+            kind
             string
             noun1
             verb
@@ -47,6 +48,7 @@
             semantics-correct)
   
 (chunk-type syntactic-structure
+            kind
             voice
             language
             name)
@@ -58,11 +60,13 @@
             verb)
 
 (chunk-type semantics
+            kind
             agent
             object
             verb)
 
 (chunk-type task
+            kind
             goal
             agent
             verb
@@ -70,26 +74,13 @@
             state
             done)
 
-
 ;;; Example representation of "the nun chases the robber"
   
 (add-dm (nun) (chase) (robber) (active) (passive) (yes)
         (no) (speech-production) (sentence-comprehension)
         (verify-sentence-picture)
         (english) (drawing)
-        (sentence1 isa sentence
-                   string "the nun chases the robber"
-                   noun1 nun
-                   verb chase
-                   noun2 robber
-                   voice active
-                   syntax-correct yes
-                   semantics-correct yes)
-        (picture1 isa picture
-                  kind drawing
-                  agent nun
-                  object robber
-                  verb chase)
+        (sentence) (picture)
         (active-voice isa syntactic-structure
                       voice active
                       language english
@@ -109,126 +100,36 @@
                      done no)
         )
 
-;; Sentence Comprehension and Verification
-;;; picture -> put in goal buffer
-;;; sentence -> put in img buffer 
+;;; -------------------------------------------------------------- ;;;;
+;;; SENTENCE COMPREHENSION
+;;;                                                               -;;;;
 
-(p interpret-prime-picture
-   "Transforms a picture into a semantic representation"
-   =goal>
-     isa task
-     goal sentence-comprehension
-     done no
-     agent nil
-
+(p start-sentence-comprehension
    =visual>
-     isa picture
-     agent =AGENT
-     object =OBJECT
-     verb =VERB
-
+     kind sentence
+   
    ?goal>
-     state free
-
-==>
-   *goal>
-     agent =AGENT
-     verb =VERB
-     object =OBJECT 
-)
-
-(p start-verification
-   "Transforms a picture into a semantic representation"
-   =goal>
-     isa task
-     goal sentence-comprehension
-     agent =AGENT
-     verb =VERB
-     object =OBJECT 
-     done no
-
-   ?goal>
-     state free
-
-   ?imaginal>
      state free
      buffer empty
 
 ==>
-   +imaginal>
-     isa semantics
-     agent =AGENT
-     verb =VERB
-     object =OBJECT 
+   +goal>
+     isa task
+     goal sentence-comprehension
+     done no)
 
+(p stop-sentence-comprehension
    =goal>
      isa task
-     goal verify-sentence-picture
-)
-
-
-(p apply-correct-verification
-   =goal>
-     isa task
-      goal verify-sentence-picture
-      done no
-
-   =imaginal>
-     isa sentence
-      semantics-correct yes
-
-   ?imaginal>
-     state free
-   
-   ?retrieval>
-     state free
-     buffer full
-
-   =retrieval>
-     isa syntactic-structure
-     voice active
-==>  
-   *imaginal>
-    isa sentence
-     voice active
-     semantics-correct yes
-)
-
-
-(p speak-correct-match
-   "After applying it, you are done"
-   =imaginal>
-     isa sentence
-     voice active
-     semantics-correct yes
-     
-   =goal>
-     done no
-
-   ?vocal>
-     state free
-==>
-     
-   *goal>
+     goal sentence-comprehension
      done yes
-
-   +vocal>
-     isa speak
-     cmd speak
-     string "yes"
+==>
+   -goal>
 )
 
-
-
-;;; TODO: other conditions
-;(p retrieve-active-semantic-incorrect)
-;(p retrieve-passive-semantic-correct)
-;(p retrieve-passive-semantic-incorrect)
-
-;(p apply-correct-verification)
-;(p speak-incorrect-match)
-
-;; Production
+;;; -------------------------------------------------------------- ;;;
+;;; PRODUCTION
+;;; -------------------------------------------------------------- ;;;;
 
 (p interpret-picture
    "Transforms a picture into a semantic representation"
@@ -253,6 +154,7 @@
      verb =VERB
      object =OBJECT 
 )
+
 
 (p start-speech-production
    "Prepares imaginal buffer and loads agent, oject, and verb in WM"
