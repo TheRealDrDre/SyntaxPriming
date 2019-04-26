@@ -179,7 +179,7 @@ def load_trials(file="stimuli.txt"):
 
 
 class Simulation(SP_Object):
-    def __init__(self, model="procedural2.lisp", n=100):
+    def __init__(self, model="pure-procedural.lisp", n=100):
         self.model = model
         self.n = n
         self.data = {c : 0 for c in self.CONDITIONS}
@@ -191,7 +191,7 @@ class Simulation(SP_Object):
         """Records a response in the simulations"""
         if response == 'active':
             self.data[self.current_condition] += 1
-        print("Heyyy '%s'" % response)
+
 
 
     def run_trial(self, trial):
@@ -210,9 +210,12 @@ class Simulation(SP_Object):
         actr.run(time = 10)
 
 
-    def simulate(self):
+    def simulate(self, trace=False):
         actr.load_act_r_model(self.model)
 
+        if not trace:
+            actr.set_parameter_value(":V", False)
+        
         for condition in self.CONDITIONS:
             self.current_condition = condition
             subset = [t for t in self.trials if t.condition == condition]

@@ -170,7 +170,9 @@
    =goal>
      isa task
      goal sentence-comprehension
-     done yes
+   - agent nil
+   - action nil
+   - patient nil
 
    ?goal>
      state free
@@ -189,7 +191,9 @@
    =goal>
      isa task
      goal sentence-comprehension
-     done yes
+   - agent nil
+   - action nil
+   - patient nil
 
    ?goal>
      state free

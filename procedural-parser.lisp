@@ -1,3 +1,9 @@
+;; Todos:
+;; Make sure that, in the case of ACTIVE,
+;; error is detected *after* applying structure,
+;; AND make sure the utility calculation is different
+;; (or reward calculation)
+
 (clear-all)
 
 (define-model procedural-parser
@@ -26,7 +32,6 @@
             noun2
             voice
             completed)
-
 
 (chunk-type picture
             kind
@@ -170,7 +175,9 @@
    =goal>
      isa task
      goal sentence-comprehension
-     done yes
+   - agent nil
+   - action nil
+   - patient nil
 
    ?goal>
      state free
@@ -189,7 +196,9 @@
    =goal>
      isa task
      goal sentence-comprehension
-     done yes
+   - agent nil
+   - action nil
+   - patient nil
 
    ?goal>
      state free
