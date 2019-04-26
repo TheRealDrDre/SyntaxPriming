@@ -1,14 +1,7 @@
 # SP Device
 
-# General structure:
-# 1. Present a sentence to visual buffer
-# 2. Run model until it stops
-# 3. Present a picture to visual buffer
-# 4. Run model until it stops
-# 5. Record structure used.
-
-
 import actr
+import os
 
 class Sentence():
     """A SP experiment stimulus"""
@@ -111,11 +104,46 @@ def run_trial(sentence, picture):
     chunk_s = actr.define_chunks(sentence.chunk_definition)[0]
     actr.set_buffer_chunk('visual',
                           chunk_s)
-    actr.run(time = 100)
+    actr.run(time = 2)
 
+    print("-" * 10)
     chunk_p = actr.define_chunks(picture.chunk_definition)[0]
     actr.schedule_set_buffer_chunk('visual',
                                    chunk_p,
                                    actr.mp_time() + 0.05)
-    actr.run(time = 100)
-    
+    actr.run(time = 5)
+
+count = 0
+
+def record_response(model, response):
+    """Records a response in the simulations"""
+    global count
+    print("Heyyy '%s'" % response)
+    count += 1
+
+def simulate(model="response-monkey.lisp"):
+    """Simulates stuff"""
+    actr.load_act_r_model(model)
+
+
+    for j in range(10):
+        actr.reset()
+
+        win = actr.open_exp_window("*?*", width = 80,
+                                   height = 60, visible=False)
+        actr.install_device(win)
+        actr.add_command("damn", record_response,
+                         "Accepts a response for the SP task")
+        actr.monitor_command("output-speech",
+                             "damn")
+        
+        s1 = import_sentences("test.csv")[0]
+        p1 = import_pictures("test.csv")[0]
+        
+        run_trial(s1, p1)
+
+
+        actr.remove_command_monitor("output-speech",
+                                    "damn")
+        actr.remove_command("damn")
+
