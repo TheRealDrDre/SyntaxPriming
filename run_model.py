@@ -5,10 +5,12 @@
 
 import actr
 import random
-actr.load_act_r_model("/Users/cheryang/Documents/Code/ACT-R_PyProjects/model3.lisp")   # load the model
+import os
+from datetime import date, datetime
+random.seed(0)
 
-# set param
-#actr.set_parameter_value(':alpha', 0.9)
+actr.load_act_r_model(os.getcwd()+"/model3.lisp")   # load the model
+
 
 response = False
 def respond_to_speech (model, string):
@@ -22,7 +24,7 @@ def task1(prime_stimulus):
     # set init goal
     # actr.record_history('buffer-trace', 'vocal')
     actr.goal_focus('wait-for-screen')
-    actr.run(1)
+    actr.run(10)
 
 def task2(target_stimulus=None):
     target_stimulus = ['isa', 'picture',
@@ -34,7 +36,7 @@ def task2(target_stimulus=None):
     # set second goal
     actr.goal_focus('wait-for-next-screen')
     actr.set_buffer_chunk('visual', target_picture)  # target picture
-    actr.run(1)
+    actr.run(10)
 
 def ASP(num_trials, shuffle=False):
     trials = []
@@ -46,28 +48,28 @@ def ASP(num_trials, shuffle=False):
                                          'syntax', 'DO',
                                          'syntax-corr', 'yes']
 
-    # create prime trials
-    for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
-        prime_sentence[-3] = 'DO'
-        prime_sentence[-1] = 'yes'
-        trials.append(prime_sentence)
-    for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
-        prime_sentence[-3] = 'DO'
-        prime_sentence[-1] = 'no'
-        trials.append(prime_sentence)
-    for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
-        prime_sentence[-3] = 'PO'
-        prime_sentence[-1] = 'yes'
-        trials.append(prime_sentence)
-    for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
-        prime_sentence[-3] = 'PO'
-        prime_sentence[-1] = 'no'
-        trials.append(prime_sentence)
 
+    for i in range(int(num_trials/4)):
+        prime_sentence = prime_template.copy()
+        prime_sentence[-3] = 'PO'
+        prime_sentence[-1] = 'yes'
+        trials.append(prime_sentence)
+    for i in range(int(num_trials/4)):
+        prime_sentence = prime_template.copy()
+        prime_sentence[-3] = 'PO'
+        prime_sentence[-1] = 'no'
+        trials.append(prime_sentence)
+    # create prime trials
+    for i in range(int(num_trials / 4)):
+        prime_sentence = prime_template.copy()
+        prime_sentence[-3] = 'DO'
+        prime_sentence[-1] = 'yes'
+        trials.append(prime_sentence)
+    for i in range(int(num_trials / 4)):
+        prime_sentence = prime_template.copy()
+        prime_sentence[-3] = 'DO'
+        prime_sentence[-1] = 'no'
+        trials.append(prime_sentence)
     if shuffle: random.shuffle(trials)
     return trials
 
@@ -90,7 +92,7 @@ def single_trial(prime_stimulus):
     actr.remove_command("model1-key-press")
     return response
 
-def exp(num_trials=4, display_data=True):
+def exp(num_trials=100, display_data=True):
     actr.reset()
     # prepare exp stimuli
     trials = ASP(num_trials)
@@ -123,7 +125,7 @@ def exp(num_trials=4, display_data=True):
     prop_POC = response_list_POC.count('DO')*4.0/num_trials
     prop_POI = response_list_POI.count('DO')*4.0/num_trials
     if display_data:
-        print('-----SUBJ END----')
+        print('-----SUBJ END:-----', num_trials, 'trials')
         print(prop_DOC)#*.25/num_trials)
         print(prop_DOI)#*.25/num_trials)
         print(prop_POC)#*.25/num_trials)
@@ -134,13 +136,15 @@ def exp(num_trials=4, display_data=True):
 def simulations(num_simulation, output_data=False):
 
     if output_data:
-        output_file = open("/Users/cheryang/Documents/Code/ACT-R_PyProjects/Trace/my_simulation3.txt", "w")
+        output_file = open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d%H%M%S")+".txt", "w")
         header="DOC, DOI, POC, POI\n"
         output_file.write(header)
         for i in range(num_simulation):
             line=exp()
             line=str(line).strip('[]')+"\n"
             output_file.write(line)
+            # process bar
+            if i % 10 == 0: print('#')
         output_file.close()
     else:
         # simply running it

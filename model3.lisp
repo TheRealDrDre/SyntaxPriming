@@ -1,12 +1,10 @@
-;;; A SP RL model for DO/PO -
-
+;;; Model 3: A Sequential Procedural RL model for DO/PO -
 (clear-all)
-
 
 ;;; --------- PARAMETERS ---------
 (define-model model3 "A sequential procedural model"
 
-(sgp :seed(1 6)
+(sgp ;:seed(1 6)
      :v nil       ; output verbose
      :trace-detail low  ;high/medium/low
      :cst t     ; conflict set trace
@@ -14,8 +12,8 @@
      :esc t     ; Subsymbolic computations
      :ul t      ; Utility learning
      :ult t     ; Utility learning trace
-     :ppm 1   ; Partial matching
-     :egs 0    ; Production Randomness
+     :ppm 1     ; Partial matching
+     :egs 1     ; Production Randomness
      )
 
 ;;; --------- CHUNK TYPE ---------
@@ -262,10 +260,9 @@
     -goal>
     !stop!
 )
-  ;(spp step2-1 :u 10)
 ;------------ reward ------------
-  (spp step3-1 :reward 1)
+  (spp step3-1 :reward 0)
   (spp step3-2 :reward -1)
 ; ------------ similarity ------------
-(set-similarities (DO undecided -.2) (PO undecided -.2))
+(set-similarities (DO undecided -.5) (PO undecided -.5))
 )

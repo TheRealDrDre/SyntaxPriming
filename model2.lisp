@@ -1,19 +1,18 @@
-;;; Model 1: Reitter Declarative model
+;;; Model 2: A pure RL model for DO/PO
 (clear-all)
 
 ;;; --------- PARAMETERS ---------
-(define-model model1 "A declarative model"
+(define-model model2 "A pure RL model"
 
-(sgp :seed (1 2)
+(sgp :seed(1 6)
      :er t; Enable randomness, how deterministically
      :esc t ; Subsymbolic computations
-     :v nil
+     :ul t  ; Utility learning
+     ;:ppm nil ; Partial matching
+     :egs 0; Production Randomness
      :trace-detail low  ;high/medium/low
-     :act t ; Activation trace
-     :ans 0   ; acitvation noise
-     :rt 0  ; threhsold
-     ;:bbl 0.5   ; decay
-     ;:lf 0.1    ; memory decay
+     :v nil
+     ;:ult t ; utility learning t?
      )
 
 ;;; --------- CHUNK TYPE ---------
@@ -36,22 +35,15 @@
     agent
     patient
     action)
-(chunk-type syntactic-structure
-    syntax
-    language)
 
 ;;; --------- DM ---------
 (add-dm
-   (state) (wait) (next) (end) (yes) (no)
+   (state) (wait) (end) (yes) (no)
    (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7)
+   (temp)
    (comprehend-sentence) (comprehend-picture)
-   (syntactic-structure) (syn-corr) (syntax)
    (wait-for-screen isa goal-state state wait)
    (wait-for-next-screen isa goal-state state next)
-   (DO-form ISA syntactic-structure syntax DO language english)
-   (PO-form ISA syntactic-structure syntax PO language english)
-   (s1 ISA sentence noun1 noun1 noun2 noun2 verb verb syntax DO syntax-corr no)
-   (p1 ISA picture agent noun1 patient noun2 action verb)
 )
 
 
@@ -61,6 +53,7 @@
     =goal>
         ISA goal-state
         state wait
+        temp nil
 
     ?imaginal>
         state free
@@ -93,73 +86,83 @@
 
 
 (p step2-1
-    "comprehend successfully, create a semantic representation"
+    "create a semantic representation, and decide syntax DO"
     =goal>
         state step2
     ?imaginal>
         state free
     =imaginal>
         ISA semantics
-        syntax-corr yes
-==>
+        - syntax PO ; negation
+==> 
     =imaginal>
     *goal>
         state step3
+        temp DO
     )
 
 (p step2-2
-    "fail to comprehend, wait for picture"
+    "create a semantic representation, and decide syntax PO"
     =goal>
         state step2
+    ?imaginal>
+        state free
+    =imaginal>
+        ISA semantics
+        - syntax DO
+==> 
+    =imaginal>
+    *goal>
+        state step3
+        temp PO
+    )
+
+(p step3-1
+    "find no error"
+    =goal>
+        state step3
+    ?imaginal>
+        state free
+    =imaginal>
+        ISA semantics
+        syntax-corr yes
+==> 
+    *goal>
+        state wait
+    )
+
+(p step3-2
+    "find error"
+    =goal>
+        state step3
     ?imaginal>
         state free
     =imaginal>
         ISA semantics
         syntax-corr no
-==>
-    -imaginal>
+==> 
     *goal>
-        state next
+        state wait
     )
 
-(p step3-1
-    "retrieve DO"
+(p step3-3
+    "produce"
     =goal>
         state step3
+        temp =result
     ?imaginal>
         state free
     =imaginal>
         ISA semantics
-        syntax DO
-        syntax-corr yes
-    ?retrieval>
-        state free
-        buffer empty
+        syntax nil
+        syntax-corr nil
 ==>
-    +retrieval>
-        DO-form
-    *goal>
-        state next
-    )
-
-(p step3-2
-    "retrieve PO"
-    =goal>
-        state step3
-    ?imaginal>
-        state free
     =imaginal>
-        ISA semantics
-        syntax PO
-        syntax-corr yes
-    ?retrieval>
-        state free
-        buffer empty
-==>
-    +retrieval>
-        PO-form
     *goal>
-        state next
+        state step4
+
+    *imaginal>
+        syntax =result
     )
 
 ;------------- PRODUCTION -------------
@@ -180,20 +183,18 @@
         action =action
 ==>
     *goal>
-        state step4
+        state step2
 
     +imaginal>
         ISA semantics
         agent =agent
         patient =patient
         action =action
-
-    -retrieval>
     ;!output! ("in step 1-2 comprehend picture")
      )
 
-(p step4
-    "prepare to retrieve a syntax"
+(p step4-1
+    "apply syntax DO"
     =goal>
         ISA goal-state
         state step4
@@ -204,95 +205,57 @@
 
     =imaginal>
         ISA semantics
+        syntax DO
         agent =agent
         patient =patient
         action =action
-
-    ?retrieval>
-        state free
-        buffer empty
-
-==>
-    *goal>
-        state step5 
-    
-    =imaginal>
-
-    +retrieval>
-        ISA syntactic-structure
-        ;syntax DO-form
-        language english
-
-)
-
-(p step5-1
-    "apply retrieved syntax"
-    =goal>
-        isa goal-state
-        state step5
-
-    ?retrieval>
-        state free
-        buffer full
-
-    =retrieval>
-         isa syntactic-structure
-         language english
-         syntax =syn
-
-    =imaginal>
-         isa semantics
-         syntax nil
-
-==>    
-    *goal>
-        state step6
-    
-    *imaginal>
-        syntax =syn
-)
-
-(p step6-1
-    "produce sentence DO"
-    =imaginal>
-        isa semantics
-        syntax DO
-    
-    =goal>
-        ISA goal-state
-        state step6
-
     ?vocal>
         state free
-==>
+==> 
     *goal>
         state end
 
     +vocal>
         cmd speak
         string "DO"
-)
+    )
 
-(p step6-2
-    "produce sentence PO"
-    =imaginal>
-        isa semantics
-        syntax PO
-    
+(p step4-2
+    "apply syntax PO"
     =goal>
         ISA goal-state
-        state step6
+        state step4
+
+    ?imaginal>
+        state free
+        buffer full
+
+    =imaginal>
+        ISA semantics
+        syntax PO
+        agent =agent
+        patient =patient
+        action =action
 
     ?vocal>
         state free
-==>
+==> 
     *goal>
         state end
-
     +vocal>
         cmd speak
         string "PO"
+    )
+
+(p step5
+    "successfully produce a sentence"
+    =goal>
+        state end
+==>
+    -goal>
 )
-;(goal-focus wait-for-next-screen)
-;(set-buffer-chunk 'visual 'p1)
+;------------ reward ------------
+  (spp step3-1 :reward 1)
+  (spp step3-2 :reward -1)
+
 )
