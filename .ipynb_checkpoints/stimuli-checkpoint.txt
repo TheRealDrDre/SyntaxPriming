@@ -1,0 +1,37 @@
+T_Verb	T_image_ID	P_image_ID	P_type	ori_P_sentence	P_sentence	verif_asn	P_image_n1	P_image_n2	semantic_error	P_sentence_n1	P_sentence_n2	T_image_agent	T_image_object	syn_correctness	syn_voice	sem_correctness
+punch	T09	P17	AC	The cowboy punches the swimmer.	The cowboy punches the swimmer.	y	cowboy	swimmer		cowboy	swimmer	artist	clown	C	A	C
+punch	T10	P19	AC	The cowboy punches the robber	The cowboy punches the nun.	n	cowboy	robber	n2	cowboy	nun	artist	monk	C	A	I
+kiss	T18	P35	AC	The nun kisses the clown.	The pirate kisses the clown.	n	nun	clown	n1	priate	clown	artist	soldier	C	A	I
+follow	T06	P11	AC	The nun follows the monk.	The nun follows the cowboy.	n	nun	monk	n2	nun	cowboy	doctor	pirate	C	A	I
+kiss	T17	P33	AC	The artist kisses the ballerina.	The artist kisses the ballerina.	y	artist	ballerina		artist	ballerina	nun	boxer	C	A	C
+follow	T05	P09	AC	The nun follows the doctor.	The nun follows the doctor.	y	nun	doctor		nun	doctor	pirate	sailor	C	A	C
+scold	T14	P27	AC	The professor scolds the boxer.	The waitress scolds the boxer.	n	professor	boxer	n1	waitress	boxer	policeman	ballerina	C	A	I
+slap	T22	P43	AC	The cowboy slaps the soldier.	The cowboy slaps the ballerina.	n	cowboy	soldier 	n2	cowboy	ballerina	policeman	boxer	C	A	I
+chase	T01	P01	AC	The nun chases the sailor.	The nun chases the sailor.	y	nun	sailor 		nun	sailor 	policeman	robber	C	A	C
+chase	T02	P03	AC	The waitress chases the robber.	The policeman chases the robber.	n	waitress	robber	n1	policeman	robber	policeman	swimmer	C	A	I
+slap	T21	P41	AC	The cowboy slaps the professor.	The cowboy slaps the professor.	y	cowboy	professor		cowboy	professor	policeman	swimmer	C	A	C
+scold	T13	P25	AC	The policeman scolds the doctor.	The policeman scolds the doctor.	y	policeman	doctor		policeman	doctor	professor	sailor	C	A	C
+shoot	P26	P28	AI	The artist is shoots the robber. 	The actress shoot the robber. 	n	artist	robber	n1	actress	robber	chef	boxer	I	A	I
+push	P10	P12	AI	The chef is pushs the clown.	The chef push the clown.	y	chef	clown		chef	clown	cowboy	swimmer	I	A	C
+pull	P34	P38	AI	The boxer is pulls the soldier.	The boxer pull the soldier.	y	boxer	soldier		boxer	soldier	pirate	ballerina	I	A	C
+touch	P18	P22	AI	The waitress is touchs the sailor.	The waitress touch the professor.	n	waitress	sailor	n2	waitress	professor	sailor	swimmer	I	A	I
+kick	P02	P06	AI	The policeman is kickes the boxer.	The policeman kick the boxer.	y	policeman	boxer		policeman	boxer	waitress	clown	I	A	C
+tickle	P42	P46	AI	The soldier is tickls the ballerina.	The soldier tickle the boxer.	n	soldier 	ballerina	n2	soldier	boxer	waitress	doctor	I	A	I
+kiss	T20	P39	PC	The monk is kissed by the nun.	The monk is kissed by the swimmer.	n	monk	nun	n2	monk	swimmer	clown	artist	C	P	I
+punch	T12	P23	PC	The boxer is punched by the artist	The policeman is punched by the artist.	n	boxer	artist	n1	policeman	artist	cowboy	ballerina	C	P	I
+slap	T24	P47	PC	The monk is slapped by  the policeman.	The nurse is slapped by  the policeman.	n	monk	policeman	n1	nurse	policeman	cowboy	ballerina	C	P	I
+punch	T11	P21	PC	The ballerina is punched by the artist.	The ballerina is punched by the artist.	y	ballerina	artist		ballerina	artist	cowboy	doctor	C	P	C
+slap	T23	P45	PC	The clown is slapped by  the policeman.	The clown is slapped by the policeman.	y	clown	policeman		clown	policeman	cowboy	sailor	C	P	C
+kiss	T19	P37	PC	The boxer is kissed by the artist.	The boxer is kissed by the artist.	y	boxer	artist		boxer	artist	nun	ballerina	C	P	C
+follow	T07	P13	PC	The ballerina is followed by the pirate	The ballerina is followed by the pirate. 	y	ballerina	pirate		ballerina	pirate	nun	soldier	C	P	C
+follow	T08	P15	PC	The robber is followed by the pirate	The ballerina is followed by the pirate.	n	robber	pirate	n1	ballerina	pirate	nun 	boxer	C	P	I
+chase	T03	P05	PC	The monk is chased by the policeman.	The monk is chased by the policeman.	y	monk	policeman		monk	policeman	pirate	robber	C	P	C
+scold	T15	P29	PC	The doctor is scolded by the professor. 	The doctor is scolded by the professor. 	y	doctor	professor		doctor	professor	policeman	boxer	C	P	C
+scold	T16	P31	PC	The monk is scolded by the policeman. 	The monk is scolded by the swimmer. 	n	monk	policeman	n2	monk	swimmer	professor	soldier	C	P	I
+chase	T04	P07	PC	The swimmer is chased by the pirate.	The swimmer is chased by the nun.	n	swimmer	pirate	n2	swimmer	nun	waitress	doctor	C	P	I
+pull	P36	P40	PI	The doctor is pullen by the pirate. 	The waitress is pullen by the pirate. 	n	doctor	pirate	n2	waitress	pirate	boxer	clown	I	P	I
+shot	P30	P32	PI	The ballerina is shooted by the artist. 	The ballerina is shooted by the artist. 	y	ballerina	artist		ballerina	artist	chef	swimmer	I	P	C
+push	P14	P16	PI	The monk is pushen by the chef.	The monk is pushen by the policeman.	n	monk	chef	n2	monk	policeman	cowboy	ballerina	I	P	I
+touch	P20	P24	PI	The doctor is touchen by the waitress.	The doctor is touchen by the waitress.	y	doctor	waitress		doctor	waitress	sailor	clown	I	P	C
+tickle	P44	P48	PI	The robber is ticklen by the soldier. 	The robber is ticklen by the soldier. 	y	robber	soldier		robber	soldier	waitress	monk	I	P	C
+kick	P04	P08	PI	The clown is kicken by the policeman. 	The clown is kicken by the nun. 	n	clown	policeman	n2	clown	nun	waitress	robber	I	P	I

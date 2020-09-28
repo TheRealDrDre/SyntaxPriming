@@ -10,7 +10,7 @@
 ;;; 2. Use a syntactic structure to produce a sentence noun1-verb-noun2
 ;;;
 ;;; * A sentence should have the following structure noun1-verb-noun2 (voice)
-;;; * When struct is active, the sentence is created as agent-verb-object-active
+;;; * When struct is active, the sentence is created as agent-verb-object-actuve
 ;;; * When struct is passive, the sentence is created as oject-verb-agent-passive.
 ;;;
 ;;; Similarly, when reading a sentence, the sentence is read as noun1-verb-noun2.
@@ -38,7 +38,6 @@
      )
   
 (chunk-type sentence
-            kind 
             string
             noun1
             verb
@@ -50,10 +49,10 @@
 (chunk-type syntactic-structure
             voice
             language
-            name) ;??
+            name)
   
 (chunk-type picture
-            kind ;?? no diff between picture and semantics
+            kind
             agent
             object
             verb)
@@ -74,20 +73,11 @@
 
 ;;; Example representation of "the nun chases the robber"
   
-(add-dm (nun) 
-        (chase) 
-        (robber) 
-        (active) 
-        (passive) 
-        (yes)
-        (no) 
-        (speech-production) 
-        (sentence-comprehension)
+(add-dm (nun) (chase) (robber) (active) (passive) (yes)
+        (no) (speech-production) (sentence-comprehension)
         (verify-sentence-picture)
-        (english) 
-        (drawing)
-        ;;; Sentence and Picture Content
-        (sentence1 ISA sentence
+        (english) (drawing)
+        (sentence1 isa sentence
                    string "the nun chases the robber"
                    noun1 nun
                    verb chase
@@ -95,29 +85,26 @@
                    voice active
                    syntax-correct yes
                    semantics-correct yes)
-        (picture1 ISA picture
-                  kind drawing ;??
+        (picture1 isa picture
+                  kind drawing
                   agent nun
-                  verb chase
-                  object robber)
-        
-        ;;; Syn-structure
-        (active-voice ISA syntactic-structure
+                  object robber
+                  verb chase)
+        (active-voice isa syntactic-structure
                       voice active
                       language english
-                      name active) ;??
-        (passive-voice ISA syntactic-structure
+                      name active)
+        (passive-voice isa syntactic-structure
                        voice passive
                        language english
-                       name passive) ;??
-        ;;; GOAL 
-        (speech-goal ISA task
+                       name passive)
+        (speech-goal isa task
                      goal speech-production
                      done no)
-        (comprehend-goal ISA task
+        (comprehend-goal isa task
                      goal sentence-comprehension
                      done no)
-        (verify-goal ISA task
+        (verify-goal isa task
                      goal verify-sentence-picture
                      done no)
         )
@@ -126,158 +113,134 @@
 ;;; picture -> put in goal buffer
 ;;; sentence -> put in img buffer 
 
-    ;;; @function: This production allows the model to hold the content of the prime picture. 
-    ;;; @todo: The goal buffer is initialized to 'sentence-comprehension' task. The model first 
-        ;;; looks at visual buffer (picture), and modifies the goal buffer, copying the chunk 
-        ;;; (slots-values) in visual buffer TO goal buffer. 
-    ;;; @return: goal buffer has a 
-        ;;; chunk-type: task, 
-        ;;; goal: sentence-comprehension, 
-        ;;; done: no
-        ;;; agent: AGENT (pic)
-        ;;; object =OBJECT (pic)
-        ;;; verb =VERB (pic)
-(p interpret-prime-picture
-   "Holding picture in wm"
-   =goal>
-     ISA task
-     goal sentence-comprehension
-     done no
-     agent nil ;; why not verb nil and object nil?
-   
-   =visual>
-     ISA picture
-     agent =AGENT
-     object =OBJECT
-     verb =VERB
-
-   ?goal>
-     state free ;; not performing any actions
-==>   
-   ;;; copy chunks from visual buffer to goal buffer
-   *goal>
-   ;;; can I mofify the chunk type? what chuknk type in goal buffer -- ISA task
-     agent =AGENT
-     verb =VERB
-     object =OBJECT 
-       ; some impliict attributes
-       ; ISA task
-       ; goal sentence-comprehension
-       ; done no
-       ; state 
-   !output! (=VERB)
-)
-    
-    ;;; This production allows the model to convert the semantic representation of the prime picture and store it into imaginal buffer
-(p start-verification
+(p interpret-primepicture
    "Transforms a picture into a semantic representation"
    =goal>
-     ISA task
-     goal sentence-comprehension ;; inehrit the goal from "interpret-prime-picture"
+     isa task
+     goal sentence-comprehension
+     
+   =visual>
+     isa picture
      agent =AGENT
      verb =VERB
-     object =OBJECT 
-     done no
+     object = OBJECT
 
    ?goal>
      state free
 
-   ?imaginal>
-     state free
-     buffer empty
 ==>
-   ;;; parse in the prime sentence and hold in imaginal buffer
-   +imaginal>
-     ISA semantics
+
+   ;=visual>
+
+   *goal>
      agent =AGENT
      verb =VERB
      object =OBJECT 
+)
+
+(p start-verification
+   "Prepares imaginal buffer and loads agent, oject, and verb in WM"
+   =goal>
+     isa task
+     goal sentence-comprehension
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
+     done no
+     
+   =visual>
+    "All info is given"
+     isa sentence
+     noun1 =AGENT
+     verb =VERB
+     noun2 =OBJECT
+     voice active
+     syntax-correct yes
+     semantics-correct yes
+
+   ?goal>
+   	state free
+   	buffer full
+
+   ?imaginal>
+   "Load picture info into wm (imaginal buffer)"
+     state free
+     buffer empty
+
+
+==>
+
+ 	 =visual> 
+
+   +imaginal>
+     isa sentence
+     semantics-correct yes
+
+   +goal>
+      isa task
+      goal verify-sentence-picture
+      agent =AGENT
+      verb =VERB
+      object =OBJECT
+      voice active
     
-    ;;; modify goal buffer and change to a new chunk
+   +retrieval>
+      isa syntactic-structure
+      language english
+)
+
+(p apply-correct-verification
+  "After verify yes: retrieve syntactic-structure and change goal to do production"
    =goal>
      isa task
      goal verify-sentence-picture
-   
-   !output! (=AGENT)
-)
+     done no
 
-    ;;; This production allows the model to retrieve ACTIVE syntax if the picture-sentence(Active) is a match, and there is no grammar error
-(p correct-verification
-   "If picture and sentence match, retrieve syntactic structure"
-   =goal>
-       ISA task
-       goal verify-sentence-picture
-       done no
-
-   =visual> ;;; look at screen and parse in sentence
-     ISA sentence
-      noun1 =X ; assign noun1 to variable X
-      noun2 =Y ; assign noun2 to variable Y
-      verb =VERB ; assign verb to variable VERB
-  
-   =imaginal> ;;; inherit from start-verification production
-     ISA semantics
-      agent =X
-      object =Y 
-      verb =VERB
+   =imaginal>
+     isa sentence
+     semantics-correct yes
 
    ?imaginal>
-     state free
-   
-   ?retrieval>
-     state free
-     buffer nil
+     state free  
 
+   =retrieval>
+    state free
+    buffer = full
 ==>  
-   ;;; Modify imaginal buffer (semantics -> sentence) 
-   *imaginal>
-    ISA sentence
-     voice active
-     semantics-correct yes
-       ;other attributes are nil
+   +imaginal>
+    isa sentence
+    voice active
+    semantics-correct yes
 
-   ;;; Request a retrieval from dm, and put in retrival buffer
-   +retrieval>
-    ISA syntactic-structure
-     voice active
-     language english
 )
-    
-    ;;; This production allows the model to 
 
 (p speak-correct-match
    "After applying it, you are done"
-   =imaginal> ;;; inherit from correct-verification production
-     ISA sentence
+   =imaginal>
+     isa sentence
      voice active
      semantics-correct yes
      
    =goal>
-     done no ;;;ISA task, verify-sentence-picture
+     done no
 
    ?vocal>
      state free
 
-   ?retrieval> ;;;  ISA syntactic-structure, voice active, language english
-     state free
-     buffer full
-   
 ==>
-   
+     
    *goal>
-     done yes ;;; should I change to speech-production???
+     done yes
 
    +vocal>
-     ISA speak
+     isa speak
      cmd speak
      string "yes"
-
-   -retrieval> ;;; clear retrieval buffer
-    
 )
 
+
+
 ;;; TODO: other conditions
-;;; TODO: pay attention to visual buffer and production task
 ;(p retrieve-active-semantic-incorrect)
 ;(p retrieve-passive-semantic-correct)
 ;(p retrieve-passive-semantic-incorrect)
@@ -287,17 +250,16 @@
 
 ;; Production
 
-    ;;; This production is allows the model to interpret target picture and transform picture content into a goal buffer
 (p interpret-picture
    "Transforms a picture into a semantic representation"
    =goal>
-     ISA task
-     goal speech-production ;;; when does speech-production is initiated 
+     isa task
+     goal speech-production
      done no
      agent nil
 
    =visual>
-     ISA picture
+     isa picture
      agent =AGENT
      object =OBJECT
      verb =VERB
@@ -306,18 +268,16 @@
      state free
 
 ==>
-   ;;; put picture info into goal buffer, type is still a task
    *goal>
      agent =AGENT
      verb =VERB
      object =OBJECT 
 )
 
-    ;;;This production allows the model to produce a sentence. It loads agent, object and verb from goal buffer and put in imaginal buffer
 (p start-speech-production
    "Prepares imaginal buffer and loads agent, oject, and verb in WM"
    =goal>
-     ISA task
+     isa task
      goal speech-production
      done no
      verb =VERB
@@ -328,10 +288,10 @@
  ==>
 
    +imaginal>
-     ISA sentence
+     isa sentence
      verb =VERB
 )
-     ;;; retrieve the most recent memory about syntactic structure
+     
 (p retrieve-syntactic-structure
    "Decides which structure to apply by retrieving it from memory"
    =goal>
@@ -340,7 +300,7 @@
      done no
 
    =imaginal>
-     ISA sentence
+     isa sentence
      verb =VERB
      voice nil
 
@@ -373,18 +333,18 @@
      buffer full
 
    =retrieval>
-     ISA syntactic-structure
+     isa syntactic-structure
      voice active
 
    =imaginal>
-     ISA sentence
+     isa sentence
      voice nil
 
    ?imaginal>
      state free  
 ==>  
    *imaginal>
-     ISA sentence
+     isa sentence
      noun1 =AGENT
      noun2 =OBJECT
      voice active
@@ -419,7 +379,7 @@
      isa sentence
      noun1 =OBJECT
      noun2 =AGENT
-     voice active ;;; passive???
+     voice active
 )
 
 
@@ -484,9 +444,9 @@
 (goal-focus comprehend-goal)
 (set-buffer-chunk 'visual 'picture1)
 
-
 ; read prime sentence
-
+(goal-focus comprehend-goal)
+(set-buffer-chunk 'visual 'senetnce1)
 
 ; see target picture
 ;(goal-focus speech-goal)
