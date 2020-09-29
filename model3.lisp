@@ -8,12 +8,13 @@
      :v nil       ; output verbose
      :trace-detail low  ;high/medium/low
      :cst t     ; conflict set trace
+
      :er t      ; Enable randomness, how deterministically
      :esc t     ; Subsymbolic computations
      :ul t      ; Utility learning
      :ult t     ; Utility learning trace
      :ppm 1     ; Partial matching
-     :egs 1     ; Production Randomness
+     :egs 1.5     ; Production Randomness
      )
 
 ;;; --------- CHUNK TYPE ---------

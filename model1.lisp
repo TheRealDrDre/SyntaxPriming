@@ -4,17 +4,18 @@
 ;;; --------- PARAMETERS ---------
 (define-model model1 "A declarative model"
 
-(sgp :seed (1 2)
+(sgp ;:seed (1 2)
      :er t; Enable randomness, how deterministically
      :esc t ; Subsymbolic computations
      :v nil
      :trace-detail low  ;high/medium/low
      :act t ; Activation trace
-     :ans 0   ; acitvation noise
-     :rt 0  ; threhsold
-     ;:bbl 0.5   ; decay
-     ;:lf 0.1    ; memory decay
+     :ans 0.5       ; acitvation noise
+     :rt -100       ; threhsold
+     :bll 0.2       ; decay
+     :lf 0.2        ; memory decay
      )
+
 
 ;;; --------- CHUNK TYPE ---------
 (chunk-type goal-state
@@ -38,22 +39,23 @@
     action)
 (chunk-type syntactic-structure
     syntax
-    language)
+    english)
+
 
 ;;; --------- DM ---------
 (add-dm
    (state) (wait) (next) (end) (yes) (no)
    (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7)
    (comprehend-sentence) (comprehend-picture)
-   (syntactic-structure) (syn-corr) (syntax)
+   (syntactic-structure) (syn-corr) (syntax) (DO) (PO) (english)
    (wait-for-screen isa goal-state state wait)
    (wait-for-next-screen isa goal-state state next)
-   (DO-form ISA syntactic-structure syntax DO language english)
-   (PO-form ISA syntactic-structure syntax PO language english)
-   (s1 ISA sentence noun1 noun1 noun2 noun2 verb verb syntax DO syntax-corr no)
-   (p1 ISA picture agent noun1 patient noun2 action verb)
+   (DO-form ISA syntactic-structure syntax DO english t)
+   (PO-form ISA syntactic-structure syntax PO english t)
 )
 
+; ----- BIAS toward DO ----
+; (set-base-levels (DO-form 5) (PO-form 0))
 
 ;;;---------------- COMPREHEND ----------------
 (p step1-1
@@ -95,12 +97,14 @@
 (p step2-1
     "comprehend successfully, create a semantic representation"
     =goal>
+        ISA goal-state
         state step2
     ?imaginal>
         state free
     =imaginal>
         ISA semantics
         syntax-corr yes
+
 ==>
     =imaginal>
     *goal>
@@ -110,6 +114,7 @@
 (p step2-2
     "fail to comprehend, wait for picture"
     =goal>
+        ISA goal-state
         state step2
     ?imaginal>
         state free
@@ -123,8 +128,9 @@
     )
 
 (p step3-1
-    "retrieve DO"
+    "request a retrieval of DO"
     =goal>
+        ISA goal-state
         state step3
     ?imaginal>
         state free
@@ -137,14 +143,17 @@
         buffer empty
 ==>
     +retrieval>
-        DO-form
+        ISA syntactic-structure
+        syntax DO
+        english t
     *goal>
-        state next
+        state step4
     )
 
 (p step3-2
-    "retrieve PO"
+    "request a retrieval of PO"
     =goal>
+        ISA goal-state
         state step3
     ?imaginal>
         state free
@@ -157,10 +166,39 @@
         buffer empty
 ==>
     +retrieval>
-        PO-form
+        ISA syntactic-structure
+        syntax PO
+        english t
+    *goal>
+        state step4
+    )
+
+(p step4-1
+    "successfully retrieved"
+    =goal>
+        ISA goal-state
+        state step4
+    =retrieval>
+        ISA syntactic-structure
+        - syntax nil
+        english t
+==>
     *goal>
         state next
     )
+
+(p step4-2
+    "failed to retrieve"
+    =goal>
+        ISA goal-state
+        state step4
+    ?retrieval>
+        buffer failure
+==>
+    *goal>
+        state next
+    )
+
 
 ;------------- PRODUCTION -------------
 (p step1-2
@@ -180,23 +218,21 @@
         action =action
 ==>
     *goal>
-        state step4
+        state step5
 
     +imaginal>
         ISA semantics
         agent =agent
         patient =patient
         action =action
-
-    -retrieval>
     ;!output! ("in step 1-2 comprehend picture")
      )
 
-(p step4
-    "prepare to retrieve a syntax"
+(p step5
+    "prepare to retrieve any syntax"
     =goal>
         ISA goal-state
-        state step4
+        state step5
 
     ?imaginal>
         state free
@@ -214,22 +250,21 @@
 
 ==>
     *goal>
-        state step5 
+        state step6
     
     =imaginal>
 
     +retrieval>
         ISA syntactic-structure
-        ;syntax DO-form
-        language english
-
+        english t
 )
 
-(p step5-1
-    "apply retrieved syntax"
+
+(p step6-1
+    "sucessfully retrieved syntax and apply it"
     =goal>
         isa goal-state
-        state step5
+        state step6
 
     ?retrieval>
         state free
@@ -237,7 +272,7 @@
 
     =retrieval>
          isa syntactic-structure
-         language english
+         english t
          syntax =syn
 
     =imaginal>
@@ -246,13 +281,34 @@
 
 ==>    
     *goal>
-        state step6
+        state step7
     
     *imaginal>
         syntax =syn
 )
 
-(p step6-1
+(p step6-2
+    "failed to retrieve any syntax, apply failure to imaginal buffer"
+    =goal>
+        isa goal-state
+        state step6
+
+    ?retrieval>
+        buffer failure
+
+    =imaginal>
+         isa semantics
+         syntax nil
+==>    
+    *goal>
+        state step7
+    
+    *imaginal>
+        syntax failure
+)
+
+
+(p step7-1
     "produce sentence DO"
     =imaginal>
         isa semantics
@@ -260,7 +316,7 @@
     
     =goal>
         ISA goal-state
-        state step6
+        state step7
 
     ?vocal>
         state free
@@ -273,7 +329,7 @@
         string "DO"
 )
 
-(p step6-2
+(p step7-2
     "produce sentence PO"
     =imaginal>
         isa semantics
@@ -281,7 +337,7 @@
     
     =goal>
         ISA goal-state
-        state step6
+        state step7
 
     ?vocal>
         state free
@@ -293,6 +349,26 @@
         cmd speak
         string "PO"
 )
-;(goal-focus wait-for-next-screen)
-;(set-buffer-chunk 'visual 'p1)
+
+(p step7-3
+    "fail to produce any syntactic structure"
+    =imaginal>
+        isa semantics
+        syntax failure
+    
+    =goal>
+        ISA goal-state
+        state step7
+
+    ?vocal>
+        state free
+==>
+    *goal>
+        state end
+
+    +vocal>
+        cmd speak
+        string "failure"
+)
+
 )

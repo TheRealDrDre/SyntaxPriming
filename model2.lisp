@@ -4,15 +4,17 @@
 ;;; --------- PARAMETERS ---------
 (define-model model2 "A pure RL model"
 
-(sgp :seed(1 6)
-     :er t; Enable randomness, how deterministically
-     :esc t ; Subsymbolic computations
-     :ul t  ; Utility learning
-     ;:ppm nil ; Partial matching
-     :egs 0; Production Randomness
+(sgp ;:seed(1 6)
+     :v nil       ; output verbose
      :trace-detail low  ;high/medium/low
-     :v nil
-     ;:ult t ; utility learning t?
+     :cst t     ; conflict set trace
+
+     :er t      ; Enable randomness, how deterministically
+     :esc t     ; Subsymbolic computations
+     :ul t      ; Utility learning
+     :ult t     ; Utility learning trace
+     :ppm nil     ; Partial matching
+     :egs 1.5     ; Production Randomness
      )
 
 ;;; --------- CHUNK TYPE ---------

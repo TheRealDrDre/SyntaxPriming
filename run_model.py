@@ -47,28 +47,27 @@ def ASP(num_trials, shuffle=False):
                                          'verb', 'v',
                                          'syntax', 'DO',
                                          'syntax-corr', 'yes']
-
-
-    for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
-        prime_sentence[-3] = 'PO'
-        prime_sentence[-1] = 'yes'
-        trials.append(prime_sentence)
-    for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
-        prime_sentence[-3] = 'PO'
-        prime_sentence[-1] = 'no'
-        trials.append(prime_sentence)
     # create prime trials
+
+    for i in range(int(num_trials / 4)):
+        prime_sentence = prime_template.copy()
+        prime_sentence[-3] = 'DO'
+        prime_sentence[-1] = 'no'
+        trials.append(prime_sentence)
+    for i in range(int(num_trials/4)):
+        prime_sentence = prime_template.copy()
+        prime_sentence[-3] = 'PO'
+        prime_sentence[-1] = 'no'
+        trials.append(prime_sentence)
     for i in range(int(num_trials / 4)):
         prime_sentence = prime_template.copy()
         prime_sentence[-3] = 'DO'
         prime_sentence[-1] = 'yes'
         trials.append(prime_sentence)
-    for i in range(int(num_trials / 4)):
+    for i in range(int(num_trials/4)):
         prime_sentence = prime_template.copy()
-        prime_sentence[-3] = 'DO'
-        prime_sentence[-1] = 'no'
+        prime_sentence[-3] = 'PO'
+        prime_sentence[-1] = 'yes'
         trials.append(prime_sentence)
     if shuffle: random.shuffle(trials)
     return trials
@@ -92,7 +91,7 @@ def single_trial(prime_stimulus):
     actr.remove_command("model1-key-press")
     return response
 
-def exp(num_trials=100, display_data=True):
+def exp(num_trials=100, display_data=False):
     actr.reset()
     # prepare exp stimuli
     trials = ASP(num_trials)
@@ -133,12 +132,20 @@ def exp(num_trials=100, display_data=True):
 
     return [prop_DOC, prop_DOI, prop_POC, prop_POI]
 
-def simulations(num_simulation, output_data=False):
+def simulations(num_simulation, output_data=True):
 
     if output_data:
         output_file = open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d%H%M%S")+".txt", "w")
         header="DOC, DOI, POC, POI\n"
+        param='ans: {param_ans}; bll: {param_bll}; lf: {param_lf}; egs: {param_egs}; ppm: {param_ppm}\n'\
+            .format(param_ans=actr.get_parameter_value(':ans'),
+                    param_bll=actr.get_parameter_value(':bll'),
+                    param_lf=actr.get_parameter_value(':lf'),
+                    param_egs=actr.get_parameter_value(':egs'),
+                    param_ppm=actr.get_parameter_value(':ppm')
+                    )
         output_file.write(header)
+        output_file.write(param)
         for i in range(num_simulation):
             line=exp()
             line=str(line).strip('[]')+"\n"
@@ -150,3 +157,45 @@ def simulations(num_simulation, output_data=False):
         # simply running it
         for i in range(num_simulation):
             exp()
+
+
+############ test ############
+def test1():
+    # only DO trials - 10
+    trials = []
+    num_trials = 10
+    response_list = []
+    prime_template = ['isa', 'sentence',
+                      'string', '...',
+                      'noun1', 'n1',
+                      'noun2', 'n2',
+                      'verb', 'v',
+                      'syntax', 'DO',
+                      'syntax-corr', 'yes']
+    for i in range(int(num_trials)):
+        prime_sentence = prime_template.copy()
+        prime_sentence[-3] = 'DO'
+        prime_sentence[-1] = 'no'
+        trials.append(prime_sentence)
+
+    # insatll device
+    actr.reset()
+    actr.install_device(("speech", "microphone"))
+
+    for i in range(num_trials):
+
+        response = single_trial(trials[i])
+
+        syn = trials[i][-3]
+        syn_corr = trials[i][-1]
+        # print("prime:",syn, syn_corr, "resp", response)
+        # if response=='failure':
+            # print("---------------")
+            #actr.sdp('DO-form', 'PO-form')
+            #actr.whynot('step6-1')
+            # actr.whynot_dm('DO-form', 'PO-form')
+
+        response_list.append(response)
+    print("response count()", response_list.count("DO"), response_list.count("PO"), "\ntotal: ", num_trials)
+    print("prop_DO", response_list.count("DO")*1.0/(response_list.count("DO")+response_list.count("PO")))
+
