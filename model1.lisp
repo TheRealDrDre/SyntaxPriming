@@ -4,17 +4,21 @@
 ;;; --------- PARAMETERS ---------
 (define-model model1 "A declarative model"
 
-(sgp ;:seed (1 2)
+(sgp ;:seed (200 20)
      :er t; Enable randomness, how deterministically
      :esc t ; Subsymbolic computations
      :v nil
      :trace-detail low  ;high/medium/low
-     :act t ; Activation trace
-     :ans 0.5       ; acitvation noise
-     :rt -100       ; threhsold
-     :bll 0.2       ; decay
-     :lf 0.2        ; memory decay
+     :act t         ; Activation trace
+     ;:show-focus t  ; Debug focus of visual
+     :ans 0.1        ; acitvation noise
+     ;:rt -100      ; threhsold
+     :bll 0.1      ; decay
+     :lf 0.1        ; memory decay
+     :mas 1.6       ;
+     :imaginal-activation 1.0
      )
+(sgp :style-warnings nil)
 
 
 ;;; --------- CHUNK TYPE ---------
@@ -45,7 +49,7 @@
 ;;; --------- DM ---------
 (add-dm
    (state) (wait) (next) (end) (yes) (no)
-   (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7)
+   (step1) (step2) (step3)  (step4)  (step5) (step6)  (step7)
    (comprehend-sentence) (comprehend-picture)
    (syntactic-structure) (syn-corr) (syntax) (DO) (PO) (english)
    (wait-for-screen isa goal-state state wait)
@@ -54,8 +58,10 @@
    (PO-form ISA syntactic-structure syntax PO english t)
 )
 
+
+
 ; ----- BIAS toward DO ----
-; (set-base-levels (DO-form 5) (PO-form 0))
+(set-base-levels (DO-form 1) (PO-form 0))
 
 ;;;---------------- COMPREHEND ----------------
 (p step1-1
@@ -228,11 +234,68 @@
     ;!output! ("in step 1-2 comprehend picture")
      )
 
-(p step5
-    "prepare to retrieve any syntax"
+(p step5-1
+    "spread activation to DO"
     =goal>
         ISA goal-state
         state step5
+
+    ?imaginal>
+        state free
+        buffer full
+
+    =imaginal>
+        syntax nil
+==>
+    =imaginal>
+        syntax DO
+    *goal>
+        state step5-3
+    )
+
+(p step5-2
+    "spread activation to PO"
+    =goal>
+        ISA goal-state
+        state step5
+
+    ?imaginal>
+        state free
+        buffer full
+
+    =imaginal>
+        syntax nil
+==>
+    =imaginal>
+        syntax PO
+    *goal>
+        state step5-3
+    )
+
+(p step5-3
+    "no spreading"
+    =goal>
+        ISA goal-state
+        state step5
+
+    ?imaginal>
+        state free
+        buffer full
+
+    =imaginal>
+        syntax nil
+==>
+    =imaginal>
+
+    *goal>
+        state step5-3
+    )
+
+(p step5-4
+    "prepare to retrieve any syntax"
+    =goal>
+        ISA goal-state
+        state step5-3
 
     ?imaginal>
         state free
@@ -277,14 +340,14 @@
 
     =imaginal>
          isa semantics
-         syntax nil
+         ; syntax =syn
 
 ==>    
+    =imaginal>
+        syntax =syn
     *goal>
         state step7
-    
-    *imaginal>
-        syntax =syn
+
 )
 
 (p step6-2
@@ -298,12 +361,11 @@
 
     =imaginal>
          isa semantics
-         syntax nil
 ==>    
     *goal>
         state step7
     
-    *imaginal>
+    =imaginal>
         syntax failure
 )
 
