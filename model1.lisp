@@ -1,4 +1,27 @@
 ;;; Model 1: Reitter Declarative model
+;;;####################################################################################################################
+;;; Summary of Model
+; The model1 relies on retrieval module to decide syntactic structure
+;
+;
+; First, the model parses in prime sentence from visual buffer (step1-1)
+; If the sentence is grammatically correct, it comprehends the prime successfully (step2-1);
+;       otherwise, it fails to comprehend (step2-2) and skips retrieval and jumps to next task(step1-2).
+; After successfully comprehend, the model request a retrieval of either DO (step3-1)
+;       or PO(step3-2) depending on the condition of current trial
+; After successfully retrieves (step4-1) or failed to retrieve(step4-2), the model proceeds to the picture description
+;       task, parsing in the target picture from visual buffer (step1-2)
+; Depending on the condition, the model spreads activation to either DO-form(step5-1), PO-form(step5-2), or no spreading
+;       (step5-3).
+; After spreading, the model requests a retrieval of any available syntactic structure(step5-4)
+; Given the retrieval outcomes, the model applies the syntactic structure (step6-1), or the model fails to retrieve any
+;       syntax (step6-2)
+; Lastly, the model speaks out the syntactic structure DO(step7-1), PO(step7-2), or unknown(step7-3)
+;       to simulate the process of producing a full sentence
+;;; Notes: one additional parameter is set the base level for DO-FORM to create a bias for DO constructions.
+;;;####################################################################################################################
+
+
 (clear-all)
 
 ;;; --------- PARAMETERS ---------
@@ -6,16 +29,16 @@
 
 (sgp ;:seed (200 20)
      :er t; Enable randomness, how deterministically
-     :esc t ; Subsymbolic computations
+     :esc t                 ; Subsymbolic computations
      :v nil
-     :trace-detail low  ;high/medium/low
+     :trace-detail low      ;high/medium/low
      :act t                 ; Activation trace
      ;:show-focus t         ; Debug focus of visual
-     :ans 0.2              ; Activation noise
-     ;:egs 0.01              ; Utility noise parameter
+     :ans 0.2               ; Activation noise
+     ;:egs 0.01             ; Utility noise parameter
      ;:rt -100              ; Threshold
      :bll 0.1               ; Decay
-     :lf 0.5               ; Memory decay
+     :lf 0.5                ; Memory decay
      :mas 1.6               ;
      :imaginal-activation 1.0
      )

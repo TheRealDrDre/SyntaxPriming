@@ -1,4 +1,23 @@
 ;;; Model 2: A pure RL model for DO/PO
+;;;####################################################################################################################
+;;; Summary of Model
+; The model1 relies on production module(pure RL) to decide syntactic structure
+;
+;
+; First, the model parses in prime sentence from visual buffer (step1-1)
+;       and creates a mental representation in imaginal buffer
+; If model parses in DO prime, it chooses DO(step2-1); otherwise, it chooses PO(step2-2);
+; If model successfully comprehends (step3-1) it receives reward(1), otherwise (step3-2) it receives punishments(-1)
+; Then, the model proceeds to the picture description task, parsing in the target picture from visual buffer (step1-2)
+; Two syntactic structures compete (step2-1)(step2-2),
+;       and the one w/ higher utility is chosen to produce constructions(step3-3)
+; Lastly, the model speaks out the syntactic structure DO(step4-1), PO(step4-2),
+;       to simulate the process of producing a full sentence
+;
+;;;####################################################################################################################
+
+
+
 (clear-all)
 
 ;;; --------- PARAMETERS ---------

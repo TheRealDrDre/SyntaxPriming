@@ -17,11 +17,24 @@ subj_data = [0.75, 0.75, 0.45, 0.45]
 
 response = False
 def respond_to_speech (model, string):
+    """
+    This function collect the speech response from the model
+    :param model: string, model1/model2/model3
+    :param string: speech response generated from the model simulation, (e.g. DO/PO)
+    :return:
+    """
     # print('SELECT...', string, model)
     global response
     response = string
 
 def task1(prime_stimulus):
+    """
+    This function simulates the prime sentence verification task. The model parses in the prime sentence,
+    and attempts to comprehend it.
+    :param prime_stimulus: list, for simplification,
+                           assumes only syntax and syntax-corr changes based on condition
+    :return:
+    """
     prime_sentence = actr.define_chunks(prime_stimulus)[0]
     actr.set_buffer_chunk('visual', prime_sentence) # prime sentence
     # set init goal
@@ -30,6 +43,13 @@ def task1(prime_stimulus):
     actr.run(10)
 
 def task2(target_stimulus=None):
+    """
+    This function simulates the picture description task. The model observes the picture stimuli
+    and attempts to describe the picture using one of potential syntactic structure.
+    :param target_stimulus: None, for simplification,
+                            assume the picture stimuli uses the same verb as prime sentence
+    :return:
+    """
     target_stimulus = ['isa', 'picture',
                                        'agent', 'n3',
                                        'patient', 'n4',
@@ -42,6 +62,12 @@ def task2(target_stimulus=None):
     actr.run(10)
 
 def ASP(num_trials, shuffle=False):
+    """
+    Create a ASP paradigm trials
+    :param num_trials: int, number of trials, need to be 4*n
+    :param shuffle: whether randomly shuffle the list
+    :return: list, generated ASP trials
+    """
     trials = []
     prime_template = ['isa', 'sentence',
                                          'string', '...',
@@ -77,6 +103,12 @@ def ASP(num_trials, shuffle=False):
 
 
 def single_trial(prime_stimulus):
+    """
+    This function simulates an single trial. At the begining of each trial, the model is reset.
+    The model's response is collected as either DO/PO for a simplified version of full sentence
+    :param prime_stimulus: dict type, the prime stimulus, indicating the condition
+    :return:
+    """
     actr.reset()
     # actr.record_history('BUFFER-TRACE','production-graph-utility')
     actr.install_device(("speech", "microphone"))
@@ -101,7 +133,6 @@ def single_trial(prime_stimulus):
             else:
                 actr.pdisable("step5-1")
 
-
     global response
     response = False
 
@@ -119,7 +150,11 @@ def single_trial(prime_stimulus):
     return response
 
 def exp(num_trials=40, display_data=False):
-
+    """
+    :param num_trials: the number of trials in the experiment
+    :param display_data: whether display data
+    :return:
+    """
     # prepare exp stimuli
     trials = ASP(num_trials)
     # install speech and microphone device
@@ -159,6 +194,13 @@ def exp(num_trials=40, display_data=False):
     return simulated_data
 
 def simulations(num_simulation, output_data=False):
+    """
+    This function run the simulation with with a set of parameter set
+    :param num_simulation: int, the number of epochs simulation
+    :param output_data: True/False, the number of epochs simulation
+    :return: correlation
+    """
+
     # get parameters
     param = ''
     if actr.current_model()=="MODEL1":
@@ -187,7 +229,13 @@ def simulations(num_simulation, output_data=False):
         print(param, mean_simulation, corr)
         return (corr)
 
+
 def set_parameters(**kwargs):
+    """
+    set parameter to current model
+    :param kwargs: dict pair, indicating the parameter name and value (e.g. ans=0.1, r1=1, r2=-1)
+    :return:
+    """
     for key, value in kwargs.items():
         # set reward parameter
         if key=='r1' and actr.current_model()=='MODEL2':
@@ -200,6 +248,11 @@ def set_parameters(**kwargs):
 
 
 def get_parameters(*keys):
+    """
+    get parameter from current model
+    :param keys: string, the parameter name (e.g. ans, bll, r1, r2)
+    :return:
+    """
     paramstr = ""
     for key in keys:
         # get reward parameter
