@@ -4,17 +4,17 @@
 ;;; --------- PARAMETERS ---------
 (define-model model2 "A pure RL model"
 
-(sgp ;:seed(1 6)
+(sgp ;:seed(212 545)
      :v nil       ; output verbose
      :trace-detail low  ;high/medium/low
-     :cst t     ; conflict set trace
-
+     ;:cst t     ; conflict set trace
      :er t      ; Enable randomness, how deterministically
      :esc t     ; Subsymbolic computations
      :ul t      ; Utility learning
      :ult t     ; Utility learning trace
      :ppm nil     ; Partial matching
-     :egs 1.5     ; Production Randomness
+     :egs 0.2     ; Production Randomness
+     :alpha 0.1     ; Learning rate
      )
 
 ;;; --------- CHUNK TYPE ---------
@@ -257,7 +257,7 @@
     -goal>
 )
 ;------------ reward ------------
-  (spp step3-1 :reward 1)
-  (spp step3-2 :reward -1)
+  ;(spp step3-1 :reward 1)
+  ;(spp step3-2 :reward -1)
 
 )

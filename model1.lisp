@@ -9,13 +9,14 @@
      :esc t ; Subsymbolic computations
      :v nil
      :trace-detail low  ;high/medium/low
-     :act t         ; Activation trace
-     ;:show-focus t  ; Debug focus of visual
-     :ans 0.1        ; acitvation noise
-     ;:rt -100      ; threhsold
-     :bll 0.1      ; decay
-     :lf 0.1        ; memory decay
-     :mas 1.6       ;
+     :act t                 ; Activation trace
+     ;:show-focus t         ; Debug focus of visual
+     :ans 0.2              ; Activation noise
+     ;:egs 0.01              ; Utility noise parameter
+     ;:rt -100              ; Threshold
+     :bll 0.1               ; Decay
+     :lf 0.5               ; Memory decay
+     :mas 1.6               ;
      :imaginal-activation 1.0
      )
 (sgp :style-warnings nil)
