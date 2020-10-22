@@ -32,7 +32,7 @@
      :ul t      ; Utility learning
      :ult t     ; Utility learning trace
      :ppm nil     ; Partial matching
-     :egs 0.2     ; Production Randomness
+     :egs 0.1     ; Production Randomness
      :alpha 0.1     ; Learning rate
      )
 
@@ -276,7 +276,7 @@
     -goal>
 )
 ;------------ reward ------------
-  ;(spp step3-1 :reward 1)
-  ;(spp step3-2 :reward -1)
+(spp step3-1 :reward 1)
+(spp step3-2 :reward -1)
 
 )

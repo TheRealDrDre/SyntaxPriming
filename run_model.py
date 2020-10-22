@@ -207,6 +207,8 @@ def simulations(num_simulation, output_data=False):
         param = get_parameters('ans', 'bll', 'lf', 'imaginal-activation', 'mas')
     elif actr.current_model()=="MODEL2":
         param = get_parameters('alpha', 'egs', 'r1', 'r2')
+    elif actr.current_model()=="MODEL3":
+        param = get_parameters('alpha', 'egs', 'r1', 'r2', 'ppm', 'similarities')
 
     # write in data
     if output_data:
@@ -362,7 +364,6 @@ def test2(syntax, syntax_corr):
     actr.remove_command("model1-key-press")
     return response
 
-
 def test3():
     ans = [0.2, 0.5, 0.8]
     bll = [0.2, 0.5, 0.8]
@@ -383,3 +384,16 @@ def test3():
     print("best...")
     print(best_corr, best_param)
     return (best_corr, best_param)
+
+def test4():
+    print("############# MODEL1 #############")
+    actr.load_act_r_model(os.getcwd() + "/model1.lisp")  # load the model
+    simulations(10)
+
+    print("############# MODEL2 #############")
+    actr.load_act_r_model(os.getcwd() + "/model2.lisp")  # load the model
+    simulations(10)
+
+    print("############# MODEL3 #############")
+    actr.load_act_r_model(os.getcwd() + "/model3.lisp")  # load the model
+    simulations(10)
