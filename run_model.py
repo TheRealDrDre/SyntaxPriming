@@ -11,7 +11,7 @@ from datetime import date, datetime
 from tqdm import tqdm
 random.seed(0)
 
-actr.load_act_r_model(os.getcwd()+"/model2.lisp")   # load the model
+actr.load_act_r_model(os.getcwd()+"/model3.lisp")   # load the model
 
 subj_data = [0.75, 0.75, 0.45, 0.45]
 
@@ -242,6 +242,11 @@ def set_parameters(**kwargs):
             actr.spp('step3-1', ':reward', value)
         elif key=='r2' and actr.current_model()=='MODEL2':
             actr.spp('step3-2', ':reward', value)
+        elif key=='similarities' and actr.current_model()=='MODEL3':
+            # set-similarities (DO undecided 0.5) (PO undecided 0.5)
+            actr.sdp('undecided', ":similarities", [['DO', value], ['PO', value]])
+            actr.sdp('DO', ":similarities", [['undecided', value]])
+            actr.sdp('PO', ":similarities", [['undecided', value]])
         # normal parameters
         else:
             actr.set_parameter_value(':' + key, value)
@@ -268,6 +273,10 @@ def get_parameters(*keys):
                 .format(param_r1=v1, param_r2=v2)
         elif key == 'r2':
             continue
+        elif key == 'similarities':
+            s1=actr.sdp('DO', ":similarities")[0][0][-1][-1] # get the DO-Undecided Similarities
+            paramstr += 'similarities: {param_similarities}; ' \
+                .format(param_similarities=s1)
         # normal parameter
         else:
             paramstr += '{param_name}: {param}; ' \

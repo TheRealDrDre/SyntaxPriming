@@ -4,22 +4,23 @@
 ;;; --------- PARAMETERS ---------
 (define-model model3 "A sequential procedural model"
 
-(sgp ;:seed(1 6)
+(sgp ;:seed(212 545)
      :v nil       ; output verbose
      :trace-detail low  ;high/medium/low
      :cst t     ; conflict set trace
-
      :er t      ; Enable randomness, how deterministically
      :esc t     ; Subsymbolic computations
      :ul t      ; Utility learning
-     :ult t     ; Utility learning trace
+     :ult nil   ; Utility learning trace
      :ppm 1     ; Partial matching
-     :egs 1.5     ; Production Randomness
+     :egs 0.1     ; Production Randomness
+     :alpha 0.1     ; Learning rate
      )
 
 ;;; --------- CHUNK TYPE ---------
 (chunk-type goal-state
-    state)
+    state
+    temp)
 (chunk-type sentence
     string
     noun1
@@ -41,7 +42,7 @@
 ;;; --------- DM ---------
 (add-dm
    (state) (wait) (next) (end) (yes) (no)
-   (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7)
+   (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7) (temp)
    (DO) (PO) (undecided)
    (comprehend-sentence) (comprehend-picture)
    (wait-for-screen isa goal-state state wait)
@@ -253,17 +254,9 @@
         string "PO"
     )
 
-(p step5
-    "successfully produce a sentence"
-    =goal>
-        state end
-==>
-    -goal>
-    !stop!
-)
 ;------------ reward ------------
-  (spp step3-1 :reward 0)
-  (spp step3-2 :reward -1)
+(spp step3-1 :reward 1)
+(spp step3-2 :reward -1)
 ; ------------ similarity ------------
 (set-similarities (DO undecided -.5) (PO undecided -.5))
 )
