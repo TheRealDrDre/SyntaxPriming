@@ -5,19 +5,15 @@
 ;
 ;
 ; First, the model parses in prime sentence from visual buffer (step1-1)
-; If the sentence is grammatically correct, it comprehends the prime successfully (step2-1);
-;       otherwise, it fails to comprehend (step2-2) and skips retrieval and jumps to next task(step1-2).
-; After successfully comprehend, the model request a retrieval of either DO (step3-1)
-;       or PO(step3-2) depending on the condition of current trial
-; After successfully retrieves (step4-1) or failed to retrieve(step4-2), the model proceeds to the picture description
+; Then it requests a retrieval of either DO/PO based on prime (step2)
+; After successfully retrieves (step3-1) or failed to retrieve(step3-2), the model proceeds to the picture description
 ;       task, parsing in the target picture from visual buffer (step1-2)
-; Depending on the condition, the model spreads activation to either DO-form(step5-1), PO-form(step5-2), or no spreading
-;       (step5-3).
-; After spreading, the model requests a retrieval of any available syntactic structure(step5-4)
-; Given the retrieval outcomes, the model applies the syntactic structure (step6-1), or the model fails to retrieve any
-;       syntax (step6-2)
-; Lastly, the model speaks out the syntactic structure DO(step7-1), PO(step7-2), or unknown(step7-3)
+; Then the model requests a retrieval of any available syntactic structure(step4)
+; Given the retrieval outcomes, the model applies the syntactic structure (step5-1), or the model fails to retrieve any
+;       syntax (step5-2)
+; Lastly, the model speaks out the syntactic structure DO(step6-1), PO(step6-2), or unknown(step6-3)
 ;       to simulate the process of producing a full sentence
+;
 ;;; Notes: one additional parameter is set the base level for DO-FORM to create a bias for DO constructions.
 ;;;####################################################################################################################
 
@@ -34,20 +30,22 @@
      :trace-detail low      ;high/medium/low
      :act t                 ; Activation trace
      ;:show-focus t         ; Debug focus of visual
-     :ans 0.2               ; Activation noise
+     :ans 0.3               ; Activation noise
      ;:egs 0.01             ; Utility noise parameter
      ;:rt -100              ; Threshold
-     :bll 0.1               ; Decay
-     :lf 0.5                ; Memory decay
-     :mas 1.6               ;
-     :imaginal-activation 1.0
+     :bll 0.5               ; Decay
+     ;:lf 0.5               ; Memory decay
+     :mas 1.6               ; Maximum activation strength
+     :ga 1                  ; Spreading from goal buffer
+     :imaginal-activation 0 ; Spreading from imaginal buffer
      )
 (sgp :style-warnings nil)
 
 
 ;;; --------- CHUNK TYPE ---------
 (chunk-type goal-state
-    state)
+    state
+    retrieved-syntax)
 (chunk-type sentence
     string
     noun1
@@ -75,7 +73,8 @@
    (state) (wait) (next) (end) (yes) (no)
    (step1) (step2) (step3)  (step4)  (step5) (step6)  (step7)
    (comprehend-sentence) (comprehend-picture)
-   (syntactic-structure) (syn-corr) (syntax) (DO) (PO) (english)
+   (syntactic-structure) (syn-corr) (syntax) (retrieved-syntax) 
+   (DO) (PO) (unknown)(english)
    (wait-for-screen isa goal-state state wait)
    (wait-for-next-screen isa goal-state state next)
    (DO-form ISA syntactic-structure syntax DO english t)
@@ -100,9 +99,9 @@
 
     =visual>
         ISA sentence
-        noun1 =n1
-        noun2 =n2
-        verb =verb
+        ; noun1 =n1
+        ; noun2 =n2
+        ; verb =verb
         syntax =syntax
         syntax-corr =syntax-corr
 ==>
@@ -113,9 +112,9 @@
 
     +imaginal>
         ISA semantics
-        agent =n1
-        patient =n2
-        action =verb
+        ; agent =n1
+        ; patient =n2
+        ; action =verb
         syntax =syntax
         syntax-corr =syntax-corr
 
@@ -123,9 +122,8 @@
     ;!output! (the syntax is =syntax =syntax-corr)
      )
 
-
-(p step2-1
-    "comprehend successfully, create a semantic representation"
+(p step2
+    "request a retrieval of syntactic structure(DO/PO) based on prime"
     =goal>
         ISA goal-state
         state step2
@@ -133,95 +131,42 @@
         state free
     =imaginal>
         ISA semantics
-        syntax-corr yes
+        syntax =syntax
+    ?retrieval>
+        state free
+        buffer empty
 
 ==>
     =imaginal>
     *goal>
         state step3
+    +retrieval>
+        ISA syntactic-structure
+        syntax =syntax
+        english t
     )
 
-(p step2-2
-    "fail to comprehend, wait for picture"
-    =goal>
-        ISA goal-state
-        state step2
-    ?imaginal>
-        state free
-    =imaginal>
-        ISA semantics
-        syntax-corr no
-==>
-    -imaginal>
-    *goal>
-        state next
-    )
 
 (p step3-1
-    "request a retrieval of DO"
-    =goal>
-        ISA goal-state
-        state step3
-    ?imaginal>
-        state free
-    =imaginal>
-        ISA semantics
-        syntax DO
-        syntax-corr yes
-    ?retrieval>
-        state free
-        buffer empty
-==>
-    +retrieval>
-        ISA syntactic-structure
-        syntax DO
-        english t
-    *goal>
-        state step4
-    )
-
-(p step3-2
-    "request a retrieval of PO"
-    =goal>
-        ISA goal-state
-        state step3
-    ?imaginal>
-        state free
-    =imaginal>
-        ISA semantics
-        syntax PO
-        syntax-corr yes
-    ?retrieval>
-        state free
-        buffer empty
-==>
-    +retrieval>
-        ISA syntactic-structure
-        syntax PO
-        english t
-    *goal>
-        state step4
-    )
-
-(p step4-1
     "successfully retrieved"
     =goal>
         ISA goal-state
-        state step4
+        state step3
     =retrieval>
         ISA syntactic-structure
         - syntax nil
+        syntax =syn
         english t
 ==>
     *goal>
         state next
     )
 
-(p step4-2
+(p step3-2
     "failed to retrieve"
     =goal>
         ISA goal-state
-        state step4
+        state step3
     ?retrieval>
         buffer failure
 ==>
@@ -239,7 +184,11 @@
 
     ?imaginal>
         state free
-        buffer empty
+        ; buffer empty
+
+    =imaginal>
+        - syntax nil
+        syntax =syn
 
     =visual>
         ISA picture
@@ -248,78 +197,22 @@
         action =action
 ==>
     *goal>
-        state step5
+        state step4
 
-    +imaginal>
-        ISA semantics
-        agent =agent
-        patient =patient
-        action =action
-    ;!output! ("in step 1-2 comprehend picture")
+    *imaginal>
+        ; agent =agent
+        ; patient =patient
+        ; action =action
+    ; !output! ("in step 1-2 comprehend picture, in imaginal")
+    ; !output! =syn
      )
 
-(p step5-1
-    "spread activation to DO"
+
+(p step4
+    "request a retrieval of any syntactic structure"
     =goal>
         ISA goal-state
-        state step5
-
-    ?imaginal>
-        state free
-        buffer full
-
-    =imaginal>
-        syntax nil
-==>
-    =imaginal>
-        syntax DO
-    *goal>
-        state step5-3
-    )
-
-(p step5-2
-    "spread activation to PO"
-    =goal>
-        ISA goal-state
-        state step5
-
-    ?imaginal>
-        state free
-        buffer full
-
-    =imaginal>
-        syntax nil
-==>
-    =imaginal>
-        syntax PO
-    *goal>
-        state step5-3
-    )
-
-(p step5-3
-    "no spreading"
-    =goal>
-        ISA goal-state
-        state step5
-
-    ?imaginal>
-        state free
-        buffer full
-
-    =imaginal>
-        syntax nil
-==>
-    =imaginal>
-
-    *goal>
-        state step5-3
-    )
-
-(p step5-4
-    "prepare to retrieve any syntax"
-    =goal>
-        ISA goal-state
-        state step5-3
+        state step4
 
     ?imaginal>
         state free
@@ -327,9 +220,11 @@
 
     =imaginal>
         ISA semantics
-        agent =agent
-        patient =patient
-        action =action
+        - syntax nil
+        syntax =syn
+        ; agent =agent
+        ; patient =patient
+        ; action =action 
 
     ?retrieval>
         state free
@@ -337,21 +232,22 @@
 
 ==>
     *goal>
-        state step6
+        state step5
     
     =imaginal>
 
     +retrieval>
         ISA syntactic-structure
         english t
+    ; !output! ('in imaginal' =syn)
 )
 
 
-(p step6-1
+(p step5-1
     "sucessfully retrieved syntax and apply it"
     =goal>
         isa goal-state
-        state step6
+        state step5
 
     ?retrieval>
         state free
@@ -362,47 +258,38 @@
          english t
          syntax =syn
 
-    =imaginal>
-         isa semantics
-         ; syntax =syn
-
 ==>    
-    =imaginal>
-        syntax =syn
     *goal>
-        state step7
-
+        state step6
+        retrieved-syntax =syn
 )
 
-(p step6-2
+(p step5-2
     "failed to retrieve any syntax, apply failure to imaginal buffer"
     =goal>
         isa goal-state
-        state step6
+        state step5
 
     ?retrieval>
         buffer failure
 
-    =imaginal>
-         isa semantics
 ==>    
     *goal>
-        state step7
-    
-    =imaginal>
-        syntax failure
+        state step6
+        retrieved-syntax unknown
 )
 
 
-(p step7-1
-    "produce sentence DO"
+(p step6-1
+    "produce DO sentence"
     =imaginal>
         isa semantics
-        syntax DO
+        - syntax nil
     
     =goal>
         ISA goal-state
-        state step7
+        state step6
+        retrieved-syntax DO
 
     ?vocal>
         state free
@@ -415,15 +302,16 @@
         string "DO"
 )
 
-(p step7-2
-    "produce sentence PO"
+(p step6-2
+    "produce PO sentence"
     =imaginal>
         isa semantics
-        syntax PO
+        - syntax nil
     
     =goal>
         ISA goal-state
-        state step7
+        state step6
+        retrieved-syntax PO
 
     ?vocal>
         state free
@@ -436,15 +324,16 @@
         string "PO"
 )
 
-(p step7-3
-    "fail to produce any syntactic structure"
+(p step6-3
+    "failed to produce sentence"
     =imaginal>
         isa semantics
-        syntax failure
+        - syntax nil
     
     =goal>
         ISA goal-state
-        state step7
+        state step6
+        retrieved-syntax unknown
 
     ?vocal>
         state free
@@ -454,7 +343,6 @@
 
     +vocal>
         cmd speak
-        string "failure"
+        string "unknown"
 )
-
 )
