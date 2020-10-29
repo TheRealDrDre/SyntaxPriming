@@ -23,20 +23,20 @@
 ;;; --------- PARAMETERS ---------
 (define-model model2 "A surprisal model"
 
-(sgp ;:seed (200 20)
+(sgp :seed (250 20)
      :er t; Enable randomness, how deterministically
      :esc t                 ; Subsymbolic computations
      :v nil
      :trace-detail low      ;high/medium/low
      :act t                 ; Activation trace
      ;:show-focus t         ; Debug focus of visual
-     :ans 0.3               ; Activation noise
+     :ans 1.40592               ; Activation noise
      ;:egs 0.01             ; Utility noise parameter
      ;:rt -100              ; Threshold
-     :bll 0.5               ; Decay
-     ;:lf 0.5               ; Memory decay
-     :mas 1.6               ; Maximum activation strength
-     :ga 1                  ; Spreading from goal buffer
+     :bll 0.508904               ; Decay
+     :lf 0.946688               ; Memory decay
+     :mas 3.2659456               ; Maximum activation strength
+     :ga 1.039808                  ; Spreading from goal buffer
      :imaginal-activation 0 ; Spreading from imaginal buffer
      )
 (sgp :style-warnings nil)
@@ -73,7 +73,7 @@
    (state) (wait) (next) (end) (yes) (no)
    (step1) (step2) (step3)  (step4)  (step5) (step6)  (step7)
    (comprehend-sentence) (comprehend-picture)
-   (syntactic-structure) (syn-corr) (syntax) (retrieved-syntax) 
+   (syntactic-structure) (syn-corr) (syntax) (retrieved-syntax)
    (DO) (PO) (unknown)(english)
    (wait-for-screen isa goal-state state wait)
    (wait-for-next-screen isa goal-state state next)
@@ -226,7 +226,7 @@
         syntax-corr yes
         ; agent =agent
         ; patient =patient
-        ; action =action 
+        ; action =action
 
     ?retrieval>
         state free
@@ -235,7 +235,7 @@
 ==>
     *goal>
         state step5
-    
+
     =imaginal>
 
     +retrieval>
@@ -245,7 +245,7 @@
 )
 
 (p step4-2
-    "if find error(low-freq construction), spreading activation to this structure 
+    "if find error(low-freq construction), spreading activation to this structure
     and request a retrieval of any syntactic structure"
     =goal>
         ISA goal-state
@@ -262,7 +262,7 @@
         syntax-corr no
         ; agent =agent
         ; patient =patient
-        ; action =action 
+        ; action =action
 
     ?retrieval>
         state free
@@ -272,7 +272,7 @@
     *goal>
         state step5
         retrieved-syntax =syn
-    
+
     =imaginal>
 
     +retrieval>
@@ -296,7 +296,7 @@
          english t
          syntax =syn
 
-==>    
+==>
     *goal>
         state step6
         retrieved-syntax =syn
@@ -311,7 +311,7 @@
     ?retrieval>
         buffer failure
 
-==>    
+==>
     *goal>
         state step6
         retrieved-syntax unknown
@@ -323,7 +323,7 @@
     =imaginal>
         isa semantics
         - syntax nil
-    
+
     =goal>
         ISA goal-state
         state step6
@@ -345,7 +345,7 @@
     =imaginal>
         isa semantics
         - syntax nil
-    
+
     =goal>
         ISA goal-state
         state step6
@@ -367,7 +367,7 @@
     =imaginal>
         isa semantics
         - syntax nil
-    
+
     =goal>
         ISA goal-state
         state step6

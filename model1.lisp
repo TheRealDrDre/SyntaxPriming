@@ -20,27 +20,26 @@
 
 (clear-all)
 
+
+
 ;;; --------- PARAMETERS ---------
 (define-model model1 "A declarative model"
 
-(sgp ;:seed (200 20)
+(sgp :seed (250 20)
      :er t; Enable randomness, how deterministically
      :esc t                 ; Subsymbolic computations
      :v nil
+     :style-warnings nil
+     :model-warnings nil
      :trace-detail low      ;high/medium/low
      :act t                 ; Activation trace
-     ;:show-focus t         ; Debug focus of visual
-     :ans 0.3               ; Activation noise
+     :ans 1.35               ; Activation noise
+     ;:rt -1000              ; Threshold
      ;:egs 0.01             ; Utility noise parameter
      ;:rt -100              ; Threshold
-     :bll 0.5               ; Decay
-     ;:lf 0.5               ; Memory decay
-     :mas 1.6               ; Maximum activation strength
-     :ga 1                  ; Spreading from goal buffer
-     :imaginal-activation 0 ; Spreading from imaginal buffer
+     :bll 0.525               ; Decay
+     :lf 1.05                ; Memory decay
      )
-(sgp :style-warnings nil)
-
 
 ;;; --------- CHUNK TYPE ---------
 (chunk-type goal-state
@@ -84,7 +83,7 @@
 
 
 ; ----- BIAS toward DO ----
-(set-base-levels (DO-form 1) (PO-form 0))
+;(set-base-levels (DO-form 1) (PO-form 0))
 
 ;;;---------------- COMPREHEND ----------------
 (p step1-1

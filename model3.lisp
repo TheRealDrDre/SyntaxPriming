@@ -23,7 +23,7 @@
 ;;; --------- PARAMETERS ---------
 (define-model model3 "A pure RL model"
 
-(sgp ;:seed(212 545)
+(sgp :seed (250 20)
      :v nil       ; output verbose
      :trace-detail low  ;high/medium/low
      ;:cst t     ; conflict set trace
@@ -32,8 +32,8 @@
      :ul t      ; Utility learning
      :ult t     ; Utility learning trace
      :ppm nil     ; Partial matching
-     :egs 0.3     ; Production Randomness
-     :alpha 0.2     ; Learning rate
+     :alpha 0.18     ; Learning rate
+     :egs 0.51875     ; Production Randomness
      )
 
 ;;; --------- CHUNK TYPE ---------
@@ -276,7 +276,7 @@
     -goal>
 )
 ;------------ reward ------------
-(spp step3-1 :reward 1)
-(spp step3-2 :reward -.5)
+(spp step3-1 :reward 0.51875)
+(spp step3-2 :reward -15.5625)
 
 )
