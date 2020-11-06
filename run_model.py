@@ -13,9 +13,10 @@ from tqdm import tqdm
 import json
 random.seed(0)
 subj_data = [0.756, 0.786, 0.595, 0.548]  # type: List[float]
-actr.load_act_r_model(os.getcwd() + "/model3.lisp")
+actr.load_act_r_model(os.getcwd() + "/model1.lisp")
 
-global curr_param
+curr_param = False
+param_key = False
 global response
 
 ############ PARAM ############
@@ -46,7 +47,7 @@ def get_parameters(*keys):
     :param keys: string, the parameter name (e.g. ans, bll, r1, r2)
     :return:
     """
-    paramstr = ""
+    paramdict = {}
     for key in keys:
         # get reward parameter
         if key == 'r1':
@@ -57,31 +58,32 @@ def get_parameters(*keys):
             else:
                 v1=rs[0]
                 v2=rs[1]
-            paramstr += 'r1: {param_r1}; r2: {param_r2}; ' \
-                .format(param_r1=v1, param_r2=v2)
+            paramdict['r1']=v1
+            paramdict['r2'] = v2
         elif key == 'r2':
             continue
         elif key == 'similarities':
             s1=actr.sdp('DO', ":similarities")[0][0][-1][-1] # get the DO-Undecided Similarities
-            paramstr += 'similarities: {param_similarities}; ' \
-                .format(param_similarities=s1)
+            paramdict['similarities']=s1
         # normal parameter
         else:
-            paramstr += '{param_name}: {param}; ' \
-                .format(param_name=key, param=actr.get_parameter_value(':'+key))
-    return paramstr
+            paramdict[key] = actr.get_parameter_value(':'+key)
+    return paramdict
 
 def find_parameters():
-    # get parameters
     global param_key
+
+    # get parameters
     if actr.current_model() == "MODEL1":
-        param_key = ['bll', 'lf']
+        param_key = ['ans', 'bll', 'lf']
     elif actr.current_model() == "MODEL2":
-        param_key = ['bll', 'lf', 'ga', 'mas']
+        param_key = ['ans', 'bll', 'lf', 'ga', 'mas']
     elif actr.current_model() == "MODEL3":
         param_key = ['alpha', 'egs', 'r1', 'r2', 'ppm']
     elif actr.current_model() == "MODEL4":
         param_key = ['alpha', 'egs', 'r1', 'r2', 'ppm', 'similarities']
+
+    return param_key
 
 ############ MODEL ############
 
@@ -248,9 +250,14 @@ def exp(num_trials=40, display_data=False, **param_set):
     trials = ASP(num_trials)
 
     # param setup
+    global param_key
     global curr_param
-    curr_param = param_set
-    find_parameters()
+    if param_set:
+        curr_param = param_set
+    else:
+        if not param_key:
+            param_key = find_parameters()
+        curr_param = get_parameters(*param_key)
 
     response_list_DOC = []
     response_list_DOI = []
@@ -286,52 +293,53 @@ def exp(num_trials=40, display_data=False, **param_set):
 
     return simulated_data
 
-def simulations(num_simulation=800, write_data=False, print_data=False, **param_set):
+def simulations(num_simulation=200, print_data=False, **param_set):
         """
         This function run the simulation with with a set of parameter set
         :param num_simulation: int, the number of epochs simulation
         :param output_data: True/False, the number of epochs simulation
-        :return: mean_simulation
+        :return: simulation results, dict {'mean':[double], 'sd':[double], 'ans'...}
         """
+        # curr_param = get_parameters(*find_parameters()).copy()
 
-        curr_param = param_set
 
-        find_parameters()
-        # # get parameters
-        # global param_key
-        # if actr.current_model()=="MODEL1":
-        #     param_key = ['ans', 'bll', 'lf']
-        # elif actr.current_model()=="MODEL2":
-        #     param_key = ['ans', 'bll', 'lf', 'ga', 'mas']
-        # elif actr.current_model()=="MODEL3":
-        #     param_key = ['ans', 'bll', 'lf', 'ga', 'mas']
-        # elif actr.current_model()=="MODEL4":
-        #     param_key=['alpha', 'egs', 'r1', 'r2', 'ppm', 'similarities']
+        # calcualte mean data
+        sum_simulation = []
+        for i in range(num_simulation):
+            sum_simulation.append(exp(**param_set))
+        mean_simulation = list(np.mean(np.array(sum_simulation), axis=0))
+        sd_simulation = list(np.std(np.array(sum_simulation), axis=0))
+        res = get_parameters(*param_key).copy()
+        if print_data:
+            print('>> simulated mean >>', mean_simulation)
+            print('>> simulated std >>', sd_simulation)
+            print('>>>>>> curr simulation - curr param:', res)
+        res['mean'] = mean_simulation
+        res['sd'] = sd_simulation
+        return res
 
-        # write-in simulated data
-        if write_data:
-            output_file = open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d%H%M%S")+".txt", "w")
-            header="DOC, DOI, POC, POI"
-            output_file.write(header+'\n')
-            output_file.write(get_parameters(*param_key)+'\n')
-            for i in range(num_simulation):
-                line=exp()
-                line=str(line).strip('[]')+"\n"
-                output_file.write(line)
-            output_file.close()
-            return None
-        else:
-            # calcualte mean data
-            sum_simulation = []
-            for i in range(num_simulation):
-                sum_simulation.append(exp())
-            mean_simulation = list(np.mean(np.array(sum_simulation), axis=0))
-            sd_simulation = list(np.std(np.array(sum_simulation), axis=0))
-            if print_data:
-                print('>> simulated mean >>', mean_simulation)
-                print('>> simulated std >>', sd_simulation)
-                print('>>>>>> curr simulation - curr param:', get_parameters(*param_key))
-            return (mean_simulation, sd_simulation)
+def grid_search_simulation():
+    if actr.current_model()=='MODEL1':
+        ans = [0.1, 0.25, 0.5, 0.75, 1.0, 1.5]
+        bll = [.1, .3, .5, .7, .9]
+        lf = [.5, .7, .9, 1]
+        hyper_param = [[i, j, k] for i in ans for j in bll for k in lf]
+    elif actr.current_model() == 'MODEL2':
+        ans = [0.1, 0.25, 0.5, 0.75, 1.0, 1.5]
+        bll = [.1, .3, .5, .7, .9]
+        lf = [.5, .7, .9, 1]
+        mas = [2.8, 3.2, 3.6]
+        ga = [0.5, 1.0, 1.5, 2.0]
+
+        hyper_param = [[i, j, k, l, m] for i in ans for j in bll for k in lf for l in mas for m in ga]
+    global param_key
+    if not param_key: param_key=find_parameters()
+
+    for i in tqdm(range(len(hyper_param))):
+        param_set = dict(zip(param_key, hyper_param[i]))
+        line = simulations(2, **param_set)
+        with open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d")+".txt", "a") as f:
+            f.write(json.dumps(line)+'\n')
 
 def rmse(**param_set):
     """
@@ -347,7 +355,8 @@ def rmse(**param_set):
         R[0]-R[1], R[2]-R[3]], 4)
     d_DIFF = np.round([np.mean(D[0:2]) - np.mean(D[2:4]),
                        D[0] - D[1], D[2] - D[3]], 4)
-    RMSE = np.sqrt(np.mean((D-R)**2)) + np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
+    # RMSE = np.sqrt(np.mean((D-R)**2)) + np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
+    RMSE = np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
     return(RMSE)
 
 def target_func(param_values):

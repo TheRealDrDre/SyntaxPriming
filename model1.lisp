@@ -36,7 +36,7 @@
      :ans .5              ; Activation noise
      :bll 0.5               ; Decay
      :lf 1.0                ; Memory decay
-     ;:rt -1000              ; Threshold
+     ;:rt -100              ; Threshold
      )
 
 ;;; --------- CHUNK TYPE ---------
@@ -81,7 +81,7 @@
 
 
 ; ----- BIAS toward DO ----
-(set-base-levels (DO-form 1) (PO-form 0))
+(set-base-levels (DO-form .5) (PO-form 0))
 
 ;;;---------------- COMPREHEND ----------------
 (p step1-1
