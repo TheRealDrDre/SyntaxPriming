@@ -4,23 +4,24 @@
 ;;; --------- PARAMETERS ---------
 (define-model model4 "A sequential procedural model"
 
-(sgp ;:seed(212 545)
-     :v nil       ; output verbose
+(sgp ;:seed (250 20)
+     :v nil      ; output verbose
      :trace-detail low  ;high/medium/low
-     :cst t     ; conflict set trace
+     :model-warnings nil
+     :style-warnings nil
+     :cst nil     ; conflict set trace
      :er t      ; Enable randomness, how deterministically
      :esc t     ; Subsymbolic computations
      :ul t      ; Utility learning
      :ult nil   ; Utility learning trace
-     :ppm 1.5     ; Partial matching
-     :egs 0.9     ; Production Randomness
-     :alpha 0.01     ; Learning rate
+     :egs 1.5     ; Production Randomness
+     :alpha 0.2     ; Learning rate
+     :ppm 3     ; Partial matching
      )
 
 ;;; --------- CHUNK TYPE ---------
 (chunk-type goal-state
-    state
-    temp)
+    state)
 (chunk-type sentence
     string
     noun1
@@ -33,7 +34,8 @@
     patient
     action
     syntax
-    syntax-corr)
+    syntax-corr
+    decide-syntax)
 (chunk-type picture
     agent
     patient
@@ -42,21 +44,18 @@
 ;;; --------- DM ---------
 (add-dm
    (state) (wait) (next) (end) (yes) (no)
-   (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7) (temp)
+   (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7) (decide-syntax)
    (DO) (PO) (undecided)
    (comprehend-sentence) (comprehend-picture)
    (wait-for-screen isa goal-state state wait)
    (wait-for-next-screen isa goal-state state next)
 )
 
-
-;;;---------------- COMPREHEND ----------------
 (p step1-1
     "parse in the prime sentence, create a semantic representation in imaginal buffer"
     =goal>
         ISA goal-state
         state wait
-        ;temp nil
 
     ?imaginal>
         state free
@@ -70,7 +69,7 @@
         syntax =syntax
         syntax-corr =syntax-corr
 ==>
-    =visual>
+    ;=visual>
 
     *goal>
         state step2
@@ -87,87 +86,111 @@
     ;!output! (the syntax is =syntax =syntax-corr)
      )
 
-
 (p step2-1
-    "create a semantic representation, and decide syntax as DO"
+    "no error, decide syntax based on the prime"
     =goal>
         state step2
-    ?imaginal>
-        state free
-    =imaginal>
-        ISA semantics
-        syntax DO
-        ;- syntax PO ; negation
-==>
-    =imaginal>
-    *goal>
-        state step3
-        temp DO  ; copy selected syntax
-    )
 
-(p step2-2
-    "create a semantic representation, and decide syntax PO"
-    =goal>
-        state step2
     ?imaginal>
         state free
-    =imaginal>
-        ISA semantics
-        syntax PO
-        ;- syntax DO
-==>
-    =imaginal>
-    *goal>
-        state step3
-        temp PO     ;copy selected syntax
-    )
 
-(p step3-1
-    "find no error"
-    =goal>
-        state step3
-    ?imaginal>
-        state free
     =imaginal>
         ISA semantics
         syntax-corr yes
+        syntax =syn
+        decide-syntax nil
 ==>
-    *goal>
-        state next
+    ;*goal>
+    ;    state next
+    
+    *imaginal>
+        decide-syntax =syn
+    !output! ("step2-1: decide-syntax ")
+    !output! (=syn)
     )
 
-(p step3-2
-    "find error"
+(p step2-2
+    "find error, undecided"
     =goal>
-        state step3
+        state step2
+
     ?imaginal>
         state free
+
     =imaginal>
         ISA semantics
         syntax-corr no
+        - syntax nil
+        decide-syntax nil
 ==>
-    *goal>
-        state next
+    ;*goal>
+    ;    state next
+
+    *imaginal>
+        decide-syntax undecided
+    !output! ("decide-syntax: undecided")
     )
 
-(p step3-3
-    "prepare to produce"
-    =goal>
-        state step3
-        temp =result
-    ?imaginal>
-        state free
-    =imaginal>
-        ISA semantics
-        - syntax nil ;syntax nil
-        syntax-corr nil
-==>
-    =imaginal>
-    *goal>
-        state step4
-    *imaginal>
-        syntax =result
-    )
+
+; (p step3-1
+;     "decide to speak DO"
+;     =goal>
+;         state step3
+
+;     ?imaginal>
+;         state free
+
+;     =imaginal>
+;         ISA semantics
+;         decide-syntax DO
+; ==>
+;     *goal>
+;         state step3-3
+
+;     *imaginal>
+;         syntax DO
+;     )
+
+; (p step3-2
+;     "decide to speak PO"
+;     =goal>
+;         state step3-3
+
+;     ?imaginal>
+;         state free
+
+;     =imaginal>
+;         ISA semantics
+;         decide-syntax PO
+; ==>
+;     *goal>
+;         state step3-3
+
+;     *imaginal>
+;         syntax PO
+;     )
+
+
+; (p step3
+;     "prepare to produce"
+;     =goal>
+;         state step3
+
+;     ?imaginal>
+;         state free
+
+;     =imaginal>
+;         ISA semantics
+;         - decide-syntax nil
+;         - syntax nil 
+; ==> 
+;     *imaginal>
+;         syntax nil
+;         syntax-corr nil
+
+;     *goal>
+;         state next
+;     )
 
 ;------------- PRODUCTION -------------
 (p step1-2
@@ -179,7 +202,9 @@
 
     ?imaginal>
         state free
-        buffer empty
+
+    =imaginal>
+        ISA semantics
 
     =visual>
         ISA picture
@@ -188,75 +213,66 @@
         action =action
 ==>
     *goal>
-        state step2
+        state step3
 
-    +imaginal>
-        ISA semantics
+    *imaginal>
         agent =agent
         patient =patient
         action =action
-        syntax undecided
     ;!output! ("in step 1-2 comprehend picture, syntax is undecided" )
      )
 
-(p step4-1
-    "given what in goal buffer, apply syntax DO"
+; ;;; two competing productions 3-1 and 3-2
+(p step3-1
+    "speak DO"
     =goal>
-        ISA goal-state
-        state step4
+        state step3
 
     ?imaginal>
         state free
-        buffer full
 
     =imaginal>
         ISA semantics
-        syntax DO
-        agent =agent
-        patient =patient
-        action =action
+        decide-syntax DO
+
     ?vocal>
         state free
-==>
+
+==>        
     *goal>
         state end
-
+    
     +vocal>
         cmd speak
         string "DO"
     )
 
-
-(p step4-2
-    "given what in imaginal buffer, apply syntax PO"
+(p step3-2
+    "speak PO"
     =goal>
-        ISA goal-state
-        state step4
+        state step3
 
     ?imaginal>
         state free
-        buffer full
 
     =imaginal>
         ISA semantics
-        syntax PO
-        agent =agent
-        patient =patient
-        action =action
+        decide-syntax PO
 
     ?vocal>
         state free
-==>
+
+==>        
     *goal>
         state end
+    
     +vocal>
         cmd speak
         string "PO"
     )
-
 ;------------ reward ------------
-(spp step3-1 :reward 1)
-(spp step3-2 :reward -1)
+(spp step2-1 :reward 1)
+(spp step2-2 :reward -1)
 ; ------------ similarity ------------
 (set-similarities (DO undecided -.5) (PO undecided -.5))
 )

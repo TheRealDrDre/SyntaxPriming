@@ -23,22 +23,23 @@
 ;;; --------- PARAMETERS ---------
 (define-model model3 "A pure RL model"
 
-(sgp :seed (250 20)
+(sgp ;:seed (250 20)
      :v nil       ; output verbose
      :trace-detail low  ;high/medium/low
-     ;:cst t     ; conflict set trace
+     :cst t     ; conflict set trace
      :er t      ; Enable randomness, how deterministically
      :esc t     ; Subsymbolic computations
      :ul t      ; Utility learning
      :ult t     ; Utility learning trace
      :ppm nil     ; Partial matching
-     :alpha 0.18     ; Learning rate
-     :egs 0.51875     ; Production Randomness
+     :alpha 0.2     ; Learning rate
+     :egs 0.1     ; Production Randomness
      )
 
 ;;; --------- CHUNK TYPE ---------
 (chunk-type goal-state
-    state)
+    state
+    temp)
 (chunk-type sentence
     string
     noun1
@@ -59,9 +60,9 @@
 
 ;;; --------- DM ---------
 (add-dm
-   (state) (wait) (end) (yes) (no)
+   (state) (wait) (next) (temp) (end) (yes) (no)
    (step1) (step2) (step3)  (step4)  (step5)  (step6)  (step7)
-   (temp)
+   (DO) (PO)
    (comprehend-sentence) (comprehend-picture)
    (wait-for-screen isa goal-state state wait)
    (wait-for-next-screen isa goal-state state next)
@@ -276,7 +277,7 @@
     -goal>
 )
 ;------------ reward ------------
-(spp step3-1 :reward 0.51875)
-(spp step3-2 :reward -15.5625)
+(spp step3-1 :reward .1)
+(spp step3-2 :reward -1)
 
 )

@@ -23,20 +23,20 @@
 ;;; --------- PARAMETERS ---------
 (define-model model2 "A surprisal model"
 
-(sgp :seed (250 20)
+(sgp ;:seed (250 20)
      :er t; Enable randomness, how deterministically
      :esc t                 ; Subsymbolic computations
      :v nil
      :trace-detail low      ;high/medium/low
      :act t                 ; Activation trace
      ;:show-focus t         ; Debug focus of visual
-     :ans 1.40592               ; Activation noise
+     :ans .5                ; Activation noise
      ;:egs 0.01             ; Utility noise parameter
-     ;:rt -100              ; Threshold
-     :bll 0.508904               ; Decay
-     :lf 0.946688               ; Memory decay
-     :mas 3.2659456               ; Maximum activation strength
-     :ga 1.039808                  ; Spreading from goal buffer
+     ;:rt 0              ; Threshold
+     :bll 0.5               ; Decay
+     :lf 1.0               ; Memory decay
+     :mas 3.2               ; Maximum activation strength
+     :ga 1                  ; Spreading from goal buffer
      :imaginal-activation 0 ; Spreading from imaginal buffer
      )
 (sgp :style-warnings nil)
@@ -84,7 +84,7 @@
 
 
 ; ----- BIAS toward DO ----
-;(set-base-levels (DO-form 1) (PO-form 0))
+(set-base-levels (DO-form 1) (PO-form 0))
 
 ;;;---------------- COMPREHEND ----------------
 (p step1-1

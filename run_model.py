@@ -2,6 +2,7 @@
 #   Author: Cher Yang
 #   Date: 09/24/2020
 # This template provides a init python code for building an ACT-R model
+from typing import List
 
 import actr
 import random
@@ -9,14 +10,81 @@ import os
 import numpy as np
 from datetime import date, datetime
 from tqdm import tqdm
-
+import json
 random.seed(0)
+subj_data = [0.756, 0.786, 0.595, 0.548]  # type: List[float]
+actr.load_act_r_model(os.getcwd() + "/model3.lisp")
 
-actr.load_act_r_model(os.getcwd()+"/model1.lisp")   # load the model
+global curr_param
+global response
 
-subj_data = [0.756, 0.786, 0.595, 0.548]
+############ PARAM ############
+def set_parameters(**kwargs):
+    """
+    set parameter to current model
+    :param kwargs: dict pair, indicating the parameter name and value (e.g. ans=0.1, r1=1, r2=-1)
+    :return:
+    """
+    for key, value in kwargs.items():
+        # set reward parameter
+        if key=='r1':
+            actr.spp('step3-1', ':reward', value)
+        elif key=='r2':
+            actr.spp('step3-2', ':reward', value)
+        elif key=='similarities' and actr.current_model()=='MODEL3':
+            # set-similarities (DO undecided 0.5) (PO undecided 0.5)
+            actr.sdp('undecided', ":similarities", [['DO', value], ['PO', value]])
+            actr.sdp('DO', ":similarities", [['undecided', value]])
+            actr.sdp('PO', ":similarities", [['undecided', value]])
+        # normal parameters
+        else:
+            actr.set_parameter_value(':' + key, value)
 
-response = False
+def get_parameters(*keys):
+    """
+    get parameter from current model
+    :param keys: string, the parameter name (e.g. ans, bll, r1, r2)
+    :return:
+    """
+    paramstr = ""
+    for key in keys:
+        # get reward parameter
+        if key == 'r1':
+            rs = [x[0] for x in actr.spp(':reward') if x != [None]]
+            if len(rs)==0:
+                v1 = None
+                v2 = None
+            else:
+                v1=rs[0]
+                v2=rs[1]
+            paramstr += 'r1: {param_r1}; r2: {param_r2}; ' \
+                .format(param_r1=v1, param_r2=v2)
+        elif key == 'r2':
+            continue
+        elif key == 'similarities':
+            s1=actr.sdp('DO', ":similarities")[0][0][-1][-1] # get the DO-Undecided Similarities
+            paramstr += 'similarities: {param_similarities}; ' \
+                .format(param_similarities=s1)
+        # normal parameter
+        else:
+            paramstr += '{param_name}: {param}; ' \
+                .format(param_name=key, param=actr.get_parameter_value(':'+key))
+    return paramstr
+
+def find_parameters():
+    # get parameters
+    global param_key
+    if actr.current_model() == "MODEL1":
+        param_key = ['bll', 'lf']
+    elif actr.current_model() == "MODEL2":
+        param_key = ['bll', 'lf', 'ga', 'mas']
+    elif actr.current_model() == "MODEL3":
+        param_key = ['alpha', 'egs', 'r1', 'r2', 'ppm']
+    elif actr.current_model() == "MODEL4":
+        param_key = ['alpha', 'egs', 'r1', 'r2', 'ppm', 'similarities']
+
+############ MODEL ############
+
 def respond_to_speech (model, string):
     """
     This function collect the speech response from the model
@@ -77,8 +145,8 @@ def ASP(num_trials, shuffle=False):
                                          'verb', 'v',
                                          'syntax', 'DO',
                                          'syntax-corr', 'yes']
-    # create prime trials
 
+    # create prime trials
     for i in range(int(num_trials / 4)):
         prime_sentence = prime_template.copy()
         prime_sentence[-3] = 'DO'
@@ -102,6 +170,21 @@ def ASP(num_trials, shuffle=False):
     if shuffle: random.shuffle(trials)
     return trials
 
+# def ASP_cond(num_trials, syn='DO', syn_corr='yes'):
+#     trials = []
+#     prime_template = ['isa', 'sentence',
+#                       'string', '...',
+#                       'noun1', 'n1',
+#                       'noun2', 'n2',
+#                       'verb', 'v',
+#                       'syntax', 'DO',
+#                       'syntax-corr', 'yes']
+#     for i in range(int(num_trials)):
+#         prime_sentence = prime_template.copy()
+#         prime_sentence[-3] = syn
+#         prime_sentence[-1] = syn_corr
+#         trials.append(prime_sentence)
+#     return trials
 
 def single_trial(prime_stimulus):
     """
@@ -111,8 +194,10 @@ def single_trial(prime_stimulus):
     :return:
     """
     actr.reset()
-    # actr.record_history('BUFFER-TRACE','production-graph-utility')
     actr.install_device(("speech", "microphone"))
+    if curr_param: set_parameters(**curr_param)        #reset param
+    # actr.record_history('BUFFER-TRACE','production-graph-utility')
+
     # actr.record_history('buffer-trace', 'goal')
     # actr.set_parameter_value(':v', 't')
     syntax = prime_stimulus[-3]
@@ -148,17 +233,24 @@ def single_trial(prime_stimulus):
     #     print(actr.used_production_buffers())
         # actr.print_chunk_activation_trace('DO-FORM', 1750)
         # actr.print_chunk_activation_trace('PO-FORM', 1750)
+    # param_set={'ans': 0.5, 'bll': 0.3, 'lf': 0.3}
+    # print('>>>>>> single trial - curr param:', get_parameters(*param_set.keys()))
     return response
 
-def exp(num_trials=40, display_data=False):
+def exp(num_trials=40, display_data=False, **param_set):
     """
     :param num_trials: the number of trials in the experiment
     :param display_data: whether display data
     :return:
     """
+
     # prepare exp stimuli
     trials = ASP(num_trials)
-    # install speech and microphone device
+
+    # param setup
+    global curr_param
+    curr_param = param_set
+    find_parameters()
 
     response_list_DOC = []
     response_list_DOI = []
@@ -185,105 +277,131 @@ def exp(num_trials=40, display_data=False):
     prop_DOI = response_list_DOI.count('DO')*4.0/num_trials
     prop_POC = response_list_POC.count('DO')*4.0/num_trials
     prop_POI = response_list_POI.count('DO')*4.0/num_trials
-    if display_data:
-        print('-----SUBJ END:-----', num_trials, 'trials')
-        print(prop_DOC)#*.25/num_trials)
-        print(prop_DOI)#*.25/num_trials)
-        print(prop_POC)#*.25/num_trials)
-        print(prop_POI)#*.25/num_trials)
+
     simulated_data = [prop_DOC, prop_DOI, prop_POC, prop_POI]
+    if display_data:
+        print('-----EXP END:-----', num_trials, 'trials')
+        print('>> mean simulated data >>', simulated_data)
+        print('>>>>>> curr simulation - curr param:', get_parameters(*param_key))
+
     return simulated_data
 
-def simulations(num_simulation, display_data=True):
-    """
-    This function run the simulation with with a set of parameter set
-    :param num_simulation: int, the number of epochs simulation
-    :param output_data: True/False, the number of epochs simulation
-    :return: correlation
-    """
+def simulations(num_simulation=800, write_data=False, print_data=False, **param_set):
+        """
+        This function run the simulation with with a set of parameter set
+        :param num_simulation: int, the number of epochs simulation
+        :param output_data: True/False, the number of epochs simulation
+        :return: mean_simulation
+        """
 
-    # get parameters
-    param = ''
-    if actr.current_model()=="MODEL1":
-        param = get_parameters('ans', 'bll', 'lf', 'imaginal-activation', 'mas')
-    elif actr.current_model()=="MODEL2":
-        param = get_parameters('alpha', 'egs', 'r1', 'r2')
-    elif actr.current_model()=="MODEL3":
-        param = get_parameters('alpha', 'egs', 'r1', 'r2', 'ppm', 'similarities')
+        curr_param = param_set
 
-    sum_simulation = []
-    # write data
-    output_file = open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d%H%M%S")+".txt", "w")
-    header="DOC, DOI, POC, POI"
-    output_file.write(header+'\n')
-    output_file.write(param+'\n')
-    for i in range(num_simulation):
-        line=exp()
-        sum_simulation.append(line) # calculate mean
-        line=str(line).strip('[]')+"\n"
-        output_file.write(line)
-    output_file.close()
+        find_parameters()
+        # # get parameters
+        # global param_key
+        # if actr.current_model()=="MODEL1":
+        #     param_key = ['ans', 'bll', 'lf']
+        # elif actr.current_model()=="MODEL2":
+        #     param_key = ['ans', 'bll', 'lf', 'ga', 'mas']
+        # elif actr.current_model()=="MODEL3":
+        #     param_key = ['ans', 'bll', 'lf', 'ga', 'mas']
+        # elif actr.current_model()=="MODEL4":
+        #     param_key=['alpha', 'egs', 'r1', 'r2', 'ppm', 'similarities']
 
-    # calculate mean
-    mean_simulation = list(np.mean(np.array(sum_simulation), axis=0))
-    corr = actr.correlation(subj_data, mean_simulation, False)
-    if display_data:
-        print(param, mean_simulation, corr)
-    return corr
-
-
-def set_parameters(**kwargs):
-    """
-    set parameter to current model
-    :param kwargs: dict pair, indicating the parameter name and value (e.g. ans=0.1, r1=1, r2=-1)
-    :return:
-    """
-    for key, value in kwargs.items():
-        # set reward parameter
-        if key=='r1':
-            actr.spp('step3-1', ':reward', value)
-        elif key=='r2':
-            actr.spp('step3-2', ':reward', value)
-        elif key=='similarities' and actr.current_model()=='MODEL3':
-            # set-similarities (DO undecided 0.5) (PO undecided 0.5)
-            actr.sdp('undecided', ":similarities", [['DO', value], ['PO', value]])
-            actr.sdp('DO', ":similarities", [['undecided', value]])
-            actr.sdp('PO', ":similarities", [['undecided', value]])
-        # normal parameters
+        # write-in simulated data
+        if write_data:
+            output_file = open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d%H%M%S")+".txt", "w")
+            header="DOC, DOI, POC, POI"
+            output_file.write(header+'\n')
+            output_file.write(get_parameters(*param_key)+'\n')
+            for i in range(num_simulation):
+                line=exp()
+                line=str(line).strip('[]')+"\n"
+                output_file.write(line)
+            output_file.close()
+            return None
         else:
-            actr.set_parameter_value(':' + key, value)
+            # calcualte mean data
+            sum_simulation = []
+            for i in range(num_simulation):
+                sum_simulation.append(exp())
+            mean_simulation = list(np.mean(np.array(sum_simulation), axis=0))
+            sd_simulation = list(np.std(np.array(sum_simulation), axis=0))
+            if print_data:
+                print('>> simulated mean >>', mean_simulation)
+                print('>> simulated std >>', sd_simulation)
+                print('>>>>>> curr simulation - curr param:', get_parameters(*param_key))
+            return (mean_simulation, sd_simulation)
+
+def rmse(**param_set):
+    """
+    Calculates RMSE for ASP3 data (objective function to minimize)
+    :return: float, rmse
+    """
+
+    m, sd = simulations(50, **param_set)
+    R = np.array(m)
+    D = np.array(subj_data)
+
+    r_DIFF = np.round([np.mean(R[0:2])-np.mean(R[2:4]),
+        R[0]-R[1], R[2]-R[3]], 4)
+    d_DIFF = np.round([np.mean(D[0:2]) - np.mean(D[2:4]),
+                       D[0] - D[1], D[2] - D[3]], 4)
+    RMSE = np.sqrt(np.mean((D-R)**2)) + np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
+    return(RMSE)
+
+def target_func(param_values):
+    find_parameters()
+    param_set = dict(zip(param_key, param_values))
+    res = rmse(**param_set)
+
+    # write simulation data in file
+    minimize_data = dict(zip(param_key, param_values))
+    minimize_data['rmse'] = res
+    with open(os.getcwd() + "/simulation_data/" + actr.current_model() + '_param_optimization.txt', 'a') as f:
+        f.write(json.dumps(minimize_data)+'\n')
+    return(res)
+
+def minimize_rmse():
+    from scipy.optimize import minimize
+    init = [1.0, 0.2]
+    #model1: ans, bll, lf
+    #model2: ans, bll, lf, mas, ga
+    # init = {'ans': 0, 'bll':0.1, 'lf':0.1}
+    # bounds = [(0, 5), (0, 5), (0, 5), (0, 5)]
+    # target_func(init)
+    minimize(target_func, init, method="nelder-mead", options={"maxiter": 100, "xatol": 1e-2, "fatol": 1e-4, "return_all":True})
+
+def minimize_rmse_gs():
+    from scipy.optimize import minimize
+    # grid search hyper-parameter tuning
+    # ans = [0.1, 0.5, 1.0, 1.5]
+    # bll = [.1, .3, .5, .7, .9]
+    # lf = [.5, .7, .9]
+    # mas = [2.8, 3.2, 3.6]
+    ga = [0.5, 1.0, 1.5, 2.0]
+
+    # hyper_param = [[i, j] for i in bll for j in lf]
+    # hyper_param = [[i, j, k, l] for i in bll for j in lf for k in mas for l in ga]
+
+    alpha=[.2, .5, .9]
+    egs=[.1, .5, .9]
+    r1=[.1, .5, 1, 5]
+    r2=[-5, -1, -.5, -.1]
+    hyper_param = [[i, j, k, l] for i in alpha for j in egs for k in r1 for l in r2]
 
 
-def get_parameters(*keys):
-    """
-    get parameter from current model
-    :param keys: string, the parameter name (e.g. ans, bll, r1, r2)
-    :return:
-    """
-    paramstr = ""
-    for key in keys:
-        # get reward parameter
-        if key == 'r1':
-            rs = [x[0] for x in actr.spp(':reward') if x != [None]]
-            if len(rs)==0:
-                v1 = None
-                v2 = None
-            else:
-                v1=rs[0]
-                v2=rs[1]
-            paramstr += 'r1: {param_r1}; r2: {param_r2}; ' \
-                .format(param_r1=v1, param_r2=v2)
-        elif key == 'r2':
-            continue
-        elif key == 'similarities':
-            s1=actr.sdp('DO', ":similarities")[0][0][-1][-1] # get the DO-Undecided Similarities
-            paramstr += 'similarities: {param_similarities}; ' \
-                .format(param_similarities=s1)
-        # normal parameter
-        else:
-            paramstr += '{param_name}: {param}; ' \
-                .format(param_name=key, param=actr.get_parameter_value(':'+key))
-    return paramstr
+    min_rmse = 1
+    best_param = []
+    for param in hyper_param:
+        curr_rmse = target_func(param)
+        if curr_rmse < min_rmse:
+            min_rmse = curr_rmse
+            best_param = param
+            print('best_param', best_param, curr_rmse)
+    return (min_rmse, best_param)
+    # hyper_param = [{'alpha': i, 'egs': j, 'r2': k, 'ppm': l} for i in alpha for j in egs for k in r2 for l in ppm]
+
 
 ############ test ############
 def test1():
@@ -390,15 +508,15 @@ def test3():
 def test4():
     print("############# MODEL1 #############")
     actr.load_act_r_model(os.getcwd() + "/model1.lisp")  # load the model
-    simulations(100)
+    simulations(50)
 
     print("############# MODEL2 #############")
     actr.load_act_r_model(os.getcwd() + "/model2.lisp")  # load the model
-    simulations(100)
+    simulations(50)
 
     print("############# MODEL3 #############")
     actr.load_act_r_model(os.getcwd() + "/model3.lisp")  # load the model
-    simulations(100)
+    simulations(50)
 
 # find best parameter for model2
 def test5():
@@ -440,4 +558,15 @@ def test6():
             print('for now, best corr', corr, 'sim_mean', sim_mean)
     print('>>> overall best corr', best_corr, best_file)
 
+# test whether param is updated
+def test_simulations(num_simulation=1, **param_set):
+    global curr_param
+    curr_param = param_set
+    sum_simulation = []
+    for i in range(num_simulation):
+        sum_simulation.append(exp(40, True))
+    mean_simulation = list(np.mean(np.array(sum_simulation), axis=0))
+    # print('>> mean simulated data >>', mean_simulation)
+    # param_set = {'ans': 0.5, 'bll': 0.3, 'lf': 0.3, 'style-warnings':'t'}
+    # print('>>>>>> curr simulation - curr param:', get_parameters(*param_set.keys()))
 
