@@ -31,7 +31,7 @@
      :v nil
      :style-warnings nil
      :model-warnings nil
-     :trace-detail low      ;high/medium/low
+     :trace-detail low      ; high/medium/low
      :act t                 ; Activation trace
      :ans .5              ; Activation noise
      :bll 0.5               ; Decay

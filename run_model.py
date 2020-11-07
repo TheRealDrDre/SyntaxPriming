@@ -2,7 +2,6 @@
 #   Author: Cher Yang
 #   Date: 09/24/2020
 # This template provides a init python code for building an ACT-R model
-from typing import List
 
 import actr
 import random
@@ -11,6 +10,8 @@ import numpy as np
 from datetime import date, datetime
 from tqdm import tqdm
 import json
+from copy import *
+
 random.seed(0)
 subj_data = [0.756, 0.786, 0.595, 0.548]  # type: List[float]
 actr.load_act_r_model(os.getcwd() + "/model1.lisp")
@@ -150,22 +151,22 @@ def ASP(num_trials, shuffle=False):
 
     # create prime trials
     for i in range(int(num_trials / 4)):
-        prime_sentence = prime_template.copy()
+        prime_sentence = copy(prime_template)
         prime_sentence[-3] = 'DO'
         prime_sentence[-1] = 'yes'
         trials.append(prime_sentence)
     for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
+        prime_sentence = copy(prime_template)
         prime_sentence[-3] = 'PO'
         prime_sentence[-1] = 'yes'
         trials.append(prime_sentence)
     for i in range(int(num_trials / 4)):
-        prime_sentence = prime_template.copy()
+        prime_sentence = copy(prime_template)
         prime_sentence[-3] = 'DO'
         prime_sentence[-1] = 'no'
         trials.append(prime_sentence)
     for i in range(int(num_trials/4)):
-        prime_sentence = prime_template.copy()
+        prime_sentence = copy(prime_template)
         prime_sentence[-3] = 'PO'
         prime_sentence[-1] = 'no'
         trials.append(prime_sentence)
@@ -309,7 +310,7 @@ def simulations(num_simulation=200, print_data=False, **param_set):
             sum_simulation.append(exp(**param_set))
         mean_simulation = list(np.mean(np.array(sum_simulation), axis=0))
         sd_simulation = list(np.std(np.array(sum_simulation), axis=0))
-        res = get_parameters(*param_key).copy()
+        res = copy(get_parameters(*param_key))
         if print_data:
             print('>> simulated mean >>', mean_simulation)
             print('>> simulated std >>', sd_simulation)
@@ -322,7 +323,7 @@ def grid_search_simulation():
     if actr.current_model()=='MODEL1':
         ans = [0.1, 0.25, 0.5, 0.75, 1.0, 1.5]
         bll = [.1, .3, .5, .7, .9]
-        lf = [.5, .7, .9, 1]
+        lf = [.1, .3, .5, .7, .9]
         hyper_param = [[i, j, k] for i in ans for j in bll for k in lf]
     elif actr.current_model() == 'MODEL2':
         ans = [0.1, 0.25, 0.5, 0.75, 1.0, 1.5]
@@ -330,14 +331,13 @@ def grid_search_simulation():
         lf = [.5, .7, .9, 1]
         mas = [2.8, 3.2, 3.6]
         ga = [0.5, 1.0, 1.5, 2.0]
-
         hyper_param = [[i, j, k, l, m] for i in ans for j in bll for k in lf for l in mas for m in ga]
     global param_key
     if not param_key: param_key=find_parameters()
 
     for i in tqdm(range(len(hyper_param))):
         param_set = dict(zip(param_key, hyper_param[i]))
-        line = simulations(2, **param_set)
+        line = simulations(**param_set)
         with open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d")+".txt", "a") as f:
             f.write(json.dumps(line)+'\n')
 
@@ -426,7 +426,7 @@ def test1():
                       'syntax', 'DO',
                       'syntax-corr', 'yes']
     for i in range(int(num_trials)):
-        prime_sentence = prime_template.copy()
+        prime_sentence = copy(prime_template)
         prime_sentence[-3] = 'DO'
         prime_sentence[-1] = 'yes'
         trials.append(prime_sentence)
@@ -448,8 +448,8 @@ def test1():
             # actr.whynot_dm('DO-form', 'PO-form')
 
         response_list.append(response)
-    print("response count()", 
-        "DO:", response_list.count("DO"), 
+    print("response count()",
+        "DO:", response_list.count("DO"),
         "PO:", response_list.count("PO"), "\ntotal: ", num_trials)
     print("prop_DO", response_list.count("DO")*1.0/(response_list.count("DO")+response_list.count("PO")))
 
@@ -578,4 +578,3 @@ def test_simulations(num_simulation=1, **param_set):
     # print('>> mean simulated data >>', mean_simulation)
     # param_set = {'ans': 0.5, 'bll': 0.3, 'lf': 0.3, 'style-warnings':'t'}
     # print('>>>>>> curr simulation - curr param:', get_parameters(*param_set.keys()))
-
