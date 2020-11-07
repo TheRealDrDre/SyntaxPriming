@@ -17,7 +17,7 @@ subj_data = [0.756, 0.786, 0.595, 0.548]  # type: List[float]
 actr.load_act_r_model(os.getcwd() + "/model1.lisp")
 
 curr_param = False
-param_key = False
+# param_key = False
 global response
 
 ############ PARAM ############
@@ -72,8 +72,7 @@ def get_parameters(*keys):
     return paramdict
 
 def find_parameters():
-    global param_key
-
+    # global param_key
     # get parameters
     if actr.current_model() == "MODEL1":
         param_key = ['ans', 'bll', 'lf']
@@ -189,7 +188,7 @@ def ASP(num_trials, shuffle=False):
 #         trials.append(prime_sentence)
 #     return trials
 
-def single_trial(prime_stimulus):
+def single_trial(prime_stimulus, **param_set):
     """
     This function simulates an single trial. At the begining of each trial, the model is reset.
     The model's response is collected as either DO/PO for a simplified version of full sentence
@@ -198,7 +197,7 @@ def single_trial(prime_stimulus):
     """
     actr.reset()
     actr.install_device(("speech", "microphone"))
-    if curr_param: set_parameters(**curr_param)        #reset param
+    if param_set: set_parameters(**param_set)        #reset param
     # actr.record_history('BUFFER-TRACE','production-graph-utility')
 
     # actr.record_history('buffer-trace', 'goal')
@@ -250,15 +249,6 @@ def exp(num_trials=40, display_data=False, **param_set):
     # prepare exp stimuli
     trials = ASP(num_trials)
 
-    # param setup
-    global param_key
-    global curr_param
-    if param_set:
-        curr_param = param_set
-    else:
-        if not param_key:
-            param_key = find_parameters()
-        curr_param = get_parameters(*param_key)
 
     response_list_DOC = []
     response_list_DOI = []
@@ -266,7 +256,7 @@ def exp(num_trials=40, display_data=False, **param_set):
     response_list_POI = []
 
     for i in range(num_trials):
-        response = single_trial(trials[i])
+        response = single_trial(trials[i], **param_set)
 
         syn = trials[i][-3]
         syn_corr = trials[i][-1]
@@ -281,20 +271,39 @@ def exp(num_trials=40, display_data=False, **param_set):
             response_list_POI.append(response)
 
     # calculate proportion of DO after different prime conditions
-    prop_DOC = response_list_DOC.count('DO')*4.0/num_trials
-    prop_DOI = response_list_DOI.count('DO')*4.0/num_trials
-    prop_POC = response_list_POC.count('DO')*4.0/num_trials
-    prop_POI = response_list_POI.count('DO')*4.0/num_trials
+    DOC_countDO = response_list_DOC.count('DO')
+    DOC_countPO = response_list_DOC.count('PO')
 
-    simulated_data = [prop_DOC, prop_DOI, prop_POC, prop_POI]
+    DOI_countDO = response_list_DOI.count('DO')
+    DOI_countPO = response_list_DOI.count('PO')
+
+    POC_countDO = response_list_POC.count('DO')
+    POC_countPO = response_list_POC.count('PO')
+
+    POI_countDO = response_list_POC.count('DO')
+    POI_countPO = response_list_POI.count('PO')
+
+    prop_DOC = DOC_countDO*1.0/len(response_list_DOC)
+    prop_DOI = DOI_countDO*1.0/len(response_list_DOI)
+    prop_POC = POC_countDO*1.0/len(response_list_POC)
+    prop_POI = POI_countDO*1.0/len(response_list_POI)
+
+    logodds_DOC = np.log(prop_DOC / ((.1+DOC_countPO) * 1.0 / len(response_list_DOC)))
+    logodds_DOI = np.log(prop_DOI / ((.1+DOI_countPO) * 1.0 / len(response_list_DOC)))
+    logodds_POC = np.log(prop_POC / ((.1+POC_countPO) * 1.0 / len(response_list_DOC)))
+    logodds_POI = np.log(prop_POI / ((.1+POI_countPO) * 1.0 / len(response_list_DOC)))
+
+    prop_data = [prop_DOC, prop_DOI, prop_POC, prop_POI]
+    logodds_data = [logodds_DOC, logodds_DOI, logodds_POC, logodds_POI]
     if display_data:
         print('-----EXP END:-----', num_trials, 'trials')
-        print('>> mean simulated data >>', simulated_data)
-        print('>>>>>> curr simulation - curr param:', get_parameters(*param_key))
+        print('>> mean simulated data >>', prop_data)
+        print('>> log odds data >>', logodds_data)
+        print('>>>>>> curr simulation - curr param:', get_parameters(*find_parameters()))
 
-    return simulated_data
+    return (prop_data, logodds_data)
 
-def simulations(num_simulation=200, print_data=False, **param_set):
+def simulations(num_simulation=2, print_data=False, **param_set):
         """
         This function run the simulation with with a set of parameter set
         :param num_simulation: int, the number of epochs simulation
@@ -305,18 +314,32 @@ def simulations(num_simulation=200, print_data=False, **param_set):
 
 
         # calcualte mean data
-        sum_simulation = []
+        prop_simulation = []
+        logodds_simulation = []
         for i in range(num_simulation):
-            sum_simulation.append(exp(**param_set))
-        mean_simulation = list(np.mean(np.array(sum_simulation), axis=0))
-        sd_simulation = list(np.std(np.array(sum_simulation), axis=0))
-        res = copy(get_parameters(*param_key))
+            prop_data, logodds_data = exp(**param_set)
+            prop_simulation.append(prop_data)
+            logodds_simulation.append(logodds_data)
+
+        prop_mean = list(np.mean(np.array(prop_simulation), axis=0))
+        prop_sd = list(np.std(np.array(prop_simulation), axis=0))
+
+        logodds_mean = list(np.mean(np.array(logodds_simulation), axis=0))
+        logodds_sd = list(np.std(np.array(logodds_simulation), axis=0))
+
+        if curr_param:
+            res = copy(curr_param)
+        else:
+            res = get_parameters(*find_parameters()) # defalt param_set
+
         if print_data:
-            print('>> simulated mean >>', mean_simulation)
-            print('>> simulated std >>', sd_simulation)
+            print('>> simulated mean >>', prop_mean)
+            print('>> simulated std >>', prop_sd)
             print('>>>>>> curr simulation - curr param:', res)
-        res['mean'] = mean_simulation
-        res['sd'] = sd_simulation
+        res['prop_mean'] = prop_mean
+        res['prop_sd'] = prop_sd
+        res['logodds_mean'] = logodds_mean
+        res['logodds_sd'] = logodds_sd
         return res
 
 def grid_search_simulation():
@@ -332,84 +355,84 @@ def grid_search_simulation():
         mas = [2.8, 3.2, 3.6]
         ga = [0.5, 1.0, 1.5, 2.0]
         hyper_param = [[i, j, k, l, m] for i in ans for j in bll for k in lf for l in mas for m in ga]
-    global param_key
-    if not param_key: param_key=find_parameters()
+    # global param_key
+    param_key=find_parameters()
 
-    for i in tqdm(range(len(hyper_param))):
+    for i in tqdm(range(2)):
         param_set = dict(zip(param_key, hyper_param[i]))
         line = simulations(**param_set)
         with open(os.getcwd()+"/simulation_data/"+actr.current_model()+datetime.now().strftime("%Y%m%d")+".txt", "a") as f:
             f.write(json.dumps(line)+'\n')
 
-def rmse(**param_set):
-    """
-    Calculates RMSE for ASP3 data (objective function to minimize)
-    :return: float, rmse
-    """
+# def rmse(**param_set):
+#     """
+#     Calculates RMSE for ASP3 data (objective function to minimize)
+#     :return: float, rmse
+#     """
+#
+#     m, sd = simulations(50, **param_set)
+#     R = np.array(m)
+#     D = np.array(subj_data)
+#
+#     r_DIFF = np.round([np.mean(R[0:2])-np.mean(R[2:4]),
+#         R[0]-R[1], R[2]-R[3]], 4)
+#     d_DIFF = np.round([np.mean(D[0:2]) - np.mean(D[2:4]),
+#                        D[0] - D[1], D[2] - D[3]], 4)
+#     # RMSE = np.sqrt(np.mean((D-R)**2)) + np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
+#     RMSE = np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
+#     return(RMSE)
 
-    m, sd = simulations(50, **param_set)
-    R = np.array(m)
-    D = np.array(subj_data)
+# def target_func(param_values):
+#     find_parameters()
+#     param_set = dict(zip(param_key, param_values))
+#     res = rmse(**param_set)
+#
+#     # write simulation data in file
+#     minimize_data = dict(zip(param_key, param_values))
+#     minimize_data['rmse'] = res
+#     with open(os.getcwd() + "/simulation_data/" + actr.current_model() + '_param_optimization.txt', 'a') as f:
+#         f.write(json.dumps(minimize_data)+'\n')
+#     return(res)
 
-    r_DIFF = np.round([np.mean(R[0:2])-np.mean(R[2:4]),
-        R[0]-R[1], R[2]-R[3]], 4)
-    d_DIFF = np.round([np.mean(D[0:2]) - np.mean(D[2:4]),
-                       D[0] - D[1], D[2] - D[3]], 4)
-    # RMSE = np.sqrt(np.mean((D-R)**2)) + np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
-    RMSE = np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
-    return(RMSE)
+# def minimize_rmse():
+#     from scipy.optimize import minimize
+#     init = [1.0, 0.2]
+#     #model1: ans, bll, lf
+#     #model2: ans, bll, lf, mas, ga
+#     # init = {'ans': 0, 'bll':0.1, 'lf':0.1}
+#     # bounds = [(0, 5), (0, 5), (0, 5), (0, 5)]
+#     # target_func(init)
+#     minimize(target_func, init, method="nelder-mead", options={"maxiter": 100, "xatol": 1e-2, "fatol": 1e-4, "return_all":True})
 
-def target_func(param_values):
-    find_parameters()
-    param_set = dict(zip(param_key, param_values))
-    res = rmse(**param_set)
-
-    # write simulation data in file
-    minimize_data = dict(zip(param_key, param_values))
-    minimize_data['rmse'] = res
-    with open(os.getcwd() + "/simulation_data/" + actr.current_model() + '_param_optimization.txt', 'a') as f:
-        f.write(json.dumps(minimize_data)+'\n')
-    return(res)
-
-def minimize_rmse():
-    from scipy.optimize import minimize
-    init = [1.0, 0.2]
-    #model1: ans, bll, lf
-    #model2: ans, bll, lf, mas, ga
-    # init = {'ans': 0, 'bll':0.1, 'lf':0.1}
-    # bounds = [(0, 5), (0, 5), (0, 5), (0, 5)]
-    # target_func(init)
-    minimize(target_func, init, method="nelder-mead", options={"maxiter": 100, "xatol": 1e-2, "fatol": 1e-4, "return_all":True})
-
-def minimize_rmse_gs():
-    from scipy.optimize import minimize
-    # grid search hyper-parameter tuning
-    # ans = [0.1, 0.5, 1.0, 1.5]
-    # bll = [.1, .3, .5, .7, .9]
-    # lf = [.5, .7, .9]
-    # mas = [2.8, 3.2, 3.6]
-    ga = [0.5, 1.0, 1.5, 2.0]
-
-    # hyper_param = [[i, j] for i in bll for j in lf]
-    # hyper_param = [[i, j, k, l] for i in bll for j in lf for k in mas for l in ga]
-
-    alpha=[.2, .5, .9]
-    egs=[.1, .5, .9]
-    r1=[.1, .5, 1, 5]
-    r2=[-5, -1, -.5, -.1]
-    hyper_param = [[i, j, k, l] for i in alpha for j in egs for k in r1 for l in r2]
-
-
-    min_rmse = 1
-    best_param = []
-    for param in hyper_param:
-        curr_rmse = target_func(param)
-        if curr_rmse < min_rmse:
-            min_rmse = curr_rmse
-            best_param = param
-            print('best_param', best_param, curr_rmse)
-    return (min_rmse, best_param)
-    # hyper_param = [{'alpha': i, 'egs': j, 'r2': k, 'ppm': l} for i in alpha for j in egs for k in r2 for l in ppm]
+# def minimize_rmse_gs():
+#     from scipy.optimize import minimize
+#     # grid search hyper-parameter tuning
+#     # ans = [0.1, 0.5, 1.0, 1.5]
+#     # bll = [.1, .3, .5, .7, .9]
+#     # lf = [.5, .7, .9]
+#     # mas = [2.8, 3.2, 3.6]
+#     ga = [0.5, 1.0, 1.5, 2.0]
+#
+#     # hyper_param = [[i, j] for i in bll for j in lf]
+#     # hyper_param = [[i, j, k, l] for i in bll for j in lf for k in mas for l in ga]
+#
+#     alpha=[.2, .5, .9]
+#     egs=[.1, .5, .9]
+#     r1=[.1, .5, 1, 5]
+#     r2=[-5, -1, -.5, -.1]
+#     hyper_param = [[i, j, k, l] for i in alpha for j in egs for k in r1 for l in r2]
+#
+#
+#     min_rmse = 1
+#     best_param = []
+#     for param in hyper_param:
+#         curr_rmse = target_func(param)
+#         if curr_rmse < min_rmse:
+#             min_rmse = curr_rmse
+#             best_param = param
+#             print('best_param', best_param, curr_rmse)
+#     return (min_rmse, best_param)
+#     # hyper_param = [{'alpha': i, 'egs': j, 'r2': k, 'ppm': l} for i in alpha for j in egs for k in r2 for l in ppm]
 
 
 ############ test ############
