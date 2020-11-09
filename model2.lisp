@@ -30,9 +30,9 @@
      :trace-detail low      ;high/medium/low
      :act t                 ; Activation trace
      ;:show-focus t         ; Debug focus of visual
-     :ans .5                ; Activation noise
+     :ans 0.5                ; Activation noise
      ;:egs 0.01             ; Utility noise parameter
-     ;:rt 0              ; Threshold
+     :rt -100              ; Threshold
      :bll 0.5               ; Decay
      :lf 1.0               ; Memory decay
      :mas 3.2               ; Maximum activation strength
@@ -45,7 +45,7 @@
 ;;; --------- CHUNK TYPE ---------
 (chunk-type goal-state
     state
-    retrieved-syntax)
+    spread-syntax)
 (chunk-type sentence
     string
     noun1
@@ -73,7 +73,7 @@
    (state) (wait) (next) (end) (yes) (no)
    (step1) (step2) (step3)  (step4)  (step5) (step6)  (step7)
    (comprehend-sentence) (comprehend-picture)
-   (syntactic-structure) (syn-corr) (syntax) (retrieved-syntax)
+   (syntactic-structure) (syn-corr) (syntax) (spread-syntax)
    (DO) (PO) (unknown)(english)
    (wait-for-screen isa goal-state state wait)
    (wait-for-next-screen isa goal-state state next)
@@ -84,7 +84,7 @@
 
 
 ; ----- BIAS toward DO ----
-(set-base-levels (DO-form 1) (PO-form 0))
+;(set-base-levels (DO-form 1) (PO-form 0))
 
 ;;;---------------- COMPREHEND ----------------
 (p step1-1
@@ -140,6 +140,7 @@
     =imaginal>
     *goal>
         state step3
+
     +retrieval>
         ISA syntactic-structure
         syntax =syntax
@@ -187,14 +188,14 @@
         ; buffer empty
 
     =imaginal>
-        - syntax nil
+        - syntax nil ; prime syntax
         syntax =syn
 
     =visual>
         ISA picture
-        agent =agent
-        patient =patient
-        action =action
+        ;agent =agent
+        ;patient =patient
+        ;action =action
 ==>
     *goal>
         state step4
@@ -203,8 +204,8 @@
         ; agent =agent
         ; patient =patient
         ; action =action
-    ; !output! ("in step 1-2 comprehend picture, in imaginal")
-    ; !output! =syn
+     !output! ("in step 1-2 comprehend picture, in imaginal")
+     !output! =syn
      )
 
 
@@ -236,7 +237,7 @@
     *goal>
         state step5
 
-    =imaginal>
+    -imaginal>
 
     +retrieval>
         ISA syntactic-structure
@@ -271,9 +272,9 @@
 ==>
     *goal>
         state step5
-        retrieved-syntax =syn
+        spread-syntax =syn ; prime syntax
 
-    =imaginal>
+    -imaginal>
 
     +retrieval>
         ISA syntactic-structure
@@ -296,10 +297,19 @@
          english t
          syntax =syn
 
+    ?imaginal>
+        state free
+        buffer empty
+
+
 ==>
     *goal>
         state step6
-        retrieved-syntax =syn
+
+    +imaginal>
+        isa semantics
+        syntax =syn
+
 )
 
 (p step5-2
@@ -311,10 +321,18 @@
     ?retrieval>
         buffer failure
 
+    ?imaginal>
+        state free
+        buffer empty
+
 ==>
     *goal>
         state step6
-        retrieved-syntax unknown
+
+    +imaginal>
+        isa semantics
+        syntax unknown
+
 )
 
 
@@ -322,12 +340,11 @@
     "produce DO sentence"
     =imaginal>
         isa semantics
-        - syntax nil
+        syntax DO
 
     =goal>
         ISA goal-state
         state step6
-        retrieved-syntax DO
 
     ?vocal>
         state free
@@ -344,12 +361,11 @@
     "produce PO sentence"
     =imaginal>
         isa semantics
-        - syntax nil
+        syntax PO
 
     =goal>
         ISA goal-state
         state step6
-        retrieved-syntax PO
 
     ?vocal>
         state free
@@ -366,12 +382,11 @@
     "failed to produce sentence"
     =imaginal>
         isa semantics
-        - syntax nil
+        syntax unknown
 
     =goal>
         ISA goal-state
         state step6
-        retrieved-syntax unknown
 
     ?vocal>
         state free

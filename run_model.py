@@ -14,7 +14,7 @@ from copy import *
 
 random.seed(0)
 subj_data = [0.756, 0.786, 0.595, 0.548]  # type: List[float]
-actr.load_act_r_model(os.getcwd() + "/model1.lisp")
+actr.load_act_r_model(os.getcwd() + "/model2.lisp")
 
 curr_param = False
 # param_key = False
@@ -195,48 +195,33 @@ def single_trial(prime_stimulus, **param_set):
     :param prime_stimulus: dict type, the prime stimulus, indicating the condition
     :return:
     """
-    actr.reset()
-    actr.install_device(("speech", "microphone"))
-    if param_set: set_parameters(**param_set)        #reset param
-    # actr.record_history('BUFFER-TRACE','production-graph-utility')
-
-    # actr.record_history('buffer-trace', 'goal')
-    # actr.set_parameter_value(':v', 't')
-    syntax = prime_stimulus[-3]
-    syntax_corr = prime_stimulus[-1]
-
-    actr.add_command("model1-key-press", respond_to_speech,
-                     "model1 task output-key monitor")
-    actr.monitor_command("output-speech", "model1-key-press")
-
-    # MODEL1: spreading activation
-    # if actr.current_model()=="MODEL1":
-    #     if syntax_corr == 'no':
-    #         actr.pdisable("step5-1")
-    #         actr.pdisable("step5-2")
-    #     else:
-    #         actr.pdisable('step5-3')
-    #         if syntax == 'DO':
-    #             actr.pdisable("step5-2")
-    #         else:
-    #             actr.pdisable("step5-1")
 
     global response
     response = False
 
-    task1(prime_stimulus)
-    task2()
+    while not response:
+        actr.reset()
+        actr.install_device(("speech", "microphone"))
+        if param_set: set_parameters(**param_set)        #reset param
+        # actr.record_history('BUFFER-TRACE','production-graph-utility')
 
-    actr.remove_command_monitor("output-speech", "model1-key-press")
-    actr.remove_command("model1-key-press")
+        # actr.record_history('buffer-trace', 'goal')
+        # actr.set_parameter_value(':v', 't')
+        syntax = prime_stimulus[-3]
+        syntax_corr = prime_stimulus[-1]
 
-    # if display:
-    #     print(actr.get_history_data('production'))
-    #     print(actr.used_production_buffers())
-        # actr.print_chunk_activation_trace('DO-FORM', 1750)
-        # actr.print_chunk_activation_trace('PO-FORM', 1750)
-    # param_set={'ans': 0.5, 'bll': 0.3, 'lf': 0.3}
-    # print('>>>>>> single trial - curr param:', get_parameters(*param_set.keys()))
+        actr.add_command("model1-key-press", respond_to_speech,
+                         "model1 task output-key monitor")
+        actr.monitor_command("output-speech", "model1-key-press")
+
+
+
+        task1(prime_stimulus)
+        task2()
+
+        actr.remove_command_monitor("output-speech", "model1-key-press")
+        actr.remove_command("model1-key-press")
+
     return response
 
 def exp(num_trials=40, display_data=False, **param_set):
@@ -280,7 +265,7 @@ def exp(num_trials=40, display_data=False, **param_set):
     POC_countDO = response_list_POC.count('DO')
     POC_countPO = response_list_POC.count('PO')
 
-    POI_countDO = response_list_POC.count('DO')
+    POI_countDO = response_list_POI.count('DO')
     POI_countPO = response_list_POI.count('PO')
 
     prop_DOC = DOC_countDO*1.0/len(response_list_DOC)
@@ -288,10 +273,10 @@ def exp(num_trials=40, display_data=False, **param_set):
     prop_POC = POC_countDO*1.0/len(response_list_POC)
     prop_POI = POI_countDO*1.0/len(response_list_POI)
 
-    logodds_DOC = np.log(prop_DOC / ((.1+DOC_countPO) * 1.0 / len(response_list_DOC)))
-    logodds_DOI = np.log(prop_DOI / ((.1+DOI_countPO) * 1.0 / len(response_list_DOC)))
-    logodds_POC = np.log(prop_POC / ((.1+POC_countPO) * 1.0 / len(response_list_DOC)))
-    logodds_POI = np.log(prop_POI / ((.1+POI_countPO) * 1.0 / len(response_list_DOC)))
+    logodds_DOC = np.log(prop_DOC / (1-prop_DOC+1e-5) + 1e-5)
+    logodds_DOI = np.log(prop_DOI / (1-prop_DOI+1e-5) + 1e-5)
+    logodds_POC = np.log(prop_POC / (1-prop_POC+1e-5) + 1e-5)
+    logodds_POI = np.log(prop_POI / (1-prop_POI+1e-5) + 1e-5)
 
     prop_data = [prop_DOC, prop_DOI, prop_POC, prop_POI]
     logodds_data = [logodds_DOC, logodds_DOI, logodds_POC, logodds_POI]
@@ -300,6 +285,9 @@ def exp(num_trials=40, display_data=False, **param_set):
         print('>> mean simulated data >>', prop_data)
         print('>> log odds data >>', logodds_data)
         print('>>>>>> curr simulation - curr param:', get_parameters(*find_parameters()))
+        print('>> countDO', DOC_countDO,DOI_countDO,POC_countDO,POI_countDO)
+        print('>> countPO', DOC_countPO, DOI_countPO, POC_countPO, POI_countPO)
+        print('>> response list', response_list_DOC, response_list_DOI, response_list_POC, response_list_POI)
 
     return (prop_data, logodds_data)
 
