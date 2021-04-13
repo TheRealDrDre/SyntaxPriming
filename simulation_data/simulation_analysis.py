@@ -26,19 +26,24 @@ def rmse_diff(model_data, subj_data):
     RMSE = np.sqrt(np.mean((d_DIFF-r_DIFF)**2))
     return(RMSE)
 
+######## MODEL DATA WIDE FORMAT ############################################
 # write in MODEL1_wide.csv
 def model1_subjmean_analysis():
     with open("./simulation_data/MODEL1/MODEL120201109.txt") as f:
         data = f.readlines()
 
     df = pd.DataFrame([json.loads(line.strip()) for line in data])
-    df1 = df[['ans', 'bll', 'lf', 'prop_mean']]
-    mean_subj_data1  = [.84, .89, .63, .69]
+    df1 = df[['ans', 'bll', 'lf', 'prop_mean', 'prop_sd']]
+    #mean_subj_data1  = [.84, .89, .63, .69]
 
-    df1['ASP1.mean.rmse'] = df1.prop_mean.apply(rmse_diff, args=([mean_subj_data1])) # could be rmse or rmse_diff
-    df1s = df1.sort_values(by='rmse')
-    df1_final = pd.concat([df1s, pd.DataFrame(df1.prop_mean.tolist(), columns=['DOC', 'DOI', 'POC', 'POI'])],
-                          axis=1).drop(['prop_mean'], axis=1)
+    #df1['ASP1.mean.rmse'] = df1.prop_mean.apply(rmse_diff, args=([mean_subj_data1])) # could be rmse or rmse_diff
+    #df1s = df1.sort_values(by='rmse')
+    #df1_final = pd.concat([df1s, pd.DataFrame(df1.prop_mean.tolist(), columns=['DOC', 'DOI', 'POC', 'POI'])],
+    #                      axis=1).drop(['prop_mean'], axis=1)
+    df1_final = pd.concat([df1,
+                           pd.DataFrame(df1.prop_mean.tolist(), columns=['DOC', 'DOI', 'POC', 'POI']),
+                           pd.DataFrame(df1.prop_sd.tolist(), columns=['DOC_sd', 'DOI_sd', 'POC_sd', 'POI_sd'])],
+                          axis=1).drop(['prop_mean', 'prop_sd'], axis=1)
     # df1_final.to_csv("./simulation_data/MODEL1/MODEL120201210_clean.csv") #diff rmse
     return df1_final
 
@@ -52,16 +57,17 @@ def model2_subjmean_analysis():
     data = data2_1 + data2_2
 
     df = pd.DataFrame([json.loads(line.strip()) for line in data])
-    df1 = df[['ans', 'bll', 'lf', 'mas', 'ga', 'prop_mean']]
+    df1 = df[['ans', 'bll', 'lf', 'mas', 'ga', 'prop_mean', 'prop_sd']]
     subj_data  = [.84, .89, .63, .69]
 
     # df1['rmse'] = df1.prop_mean.apply(rmse)
-    df1['rmse'] = df1.prop_mean.apply(rmse_diff, args=([subj_data]))  # could be rmse or rmse_diff
-    df1s = df1.sort_values(by='rmse')
-    df1_final = pd.concat([df1s, pd.DataFrame(df1.prop_mean.tolist(), columns=['DOC', 'DOI', 'POC', 'POI'])],
-                          axis=1).drop(['prop_mean'], axis=1)
+    # df1['rmse'] = df1.prop_mean.apply(rmse_diff, args=([subj_data]))  # could be rmse or rmse_diff
+    # df1s = df1.sort_values(by='rmse')
+    df1_final = pd.concat([df1, pd.DataFrame(df1.prop_mean.tolist(), columns=['DOC', 'DOI', 'POC', 'POI']),
+                           pd.DataFrame(df1.prop_sd.tolist(), columns=['DOC_sd', 'DOI_sd', 'POC_sd', 'POI_sd'])],
+                          axis=1).drop(['prop_mean', 'prop_sd'], axis=1)
 
-    # df1_final.to_csv("./simulation_data/MODEL220201210_clean.csv")  # diff rmse
+    # df1_final.to_csv("./simulation_data/MODEL2/MODEL2_wide.csv")  # diff rmse
     return df1_final
 
 # write in MODEL3_wide.csv
@@ -70,21 +76,23 @@ def model3_subjmean_analysis():
         data = f.readlines()
 
     df = pd.DataFrame([json.loads(line.strip()) for line in data])
-    df1 = df[['alpha', 'egs', 'r1', 'r2', 'prop_mean']]
-    subj_data  = [.84, .89, .63, .69]
+    df1 = df[['alpha', 'egs', 'r1', 'r2', 'prop_mean', 'prop_sd']]
+    # subj_data  = [.84, .89, .63, .69]
 
     # df1['rmse'] = df1.prop_mean.apply(rmse)
-    df1['rmse'] = df1.prop_mean.apply(rmse_diff, args=([subj_data]))  # could be rmse or rmse_diff
-    df1s = df1.sort_values(by='rmse')
-    df1_final = pd.concat([df1s, pd.DataFrame(df1.prop_mean.tolist(), columns=['DOC', 'DOI', 'POC', 'POI'])],
-                          axis=1).drop(['prop_mean'], axis=1)
+    # df1['rmse'] = df1.prop_mean.apply(rmse_diff, args=([subj_data]))  # could be rmse or rmse_diff
+    # df1s = df1.sort_values(by='rmse')
+    df1_final = pd.concat([df1, pd.DataFrame(df1.prop_mean.tolist(), columns=['DOC', 'DOI', 'POC', 'POI']),
+                           pd.DataFrame(df1.prop_sd.tolist(), columns=['DOC_sd', 'DOI_sd', 'POC_sd', 'POI_sd'])],
+                          axis=1).drop(['prop_mean', 'prop_sd'], axis=1)
 
-    # df1_final.to_csv("./simulation_data/MODEL120201110_clean.csv")  # diff rmse
+    # df1_final.to_csv("./simulation_data/MODEL3/MODEL3_wide.csv")  # diff rmse
     return df1_final
 
+############################################################################
 def individual_fit_asp1(subj1, model1):
     # load wide format of subj data
-    # subj1 = pd.read_csv('./subj_data/ASP1/ASP1_subj_wide.csv')
+    # subj1 = pd.read_csv('./subj_data/ASP1/ASP1_subj_wide90.csv')
     # load wide format of model data
     # model1 = pd.read_csv('./simulation_data/MODEL1/MODEL1_wide.csv')
 
@@ -101,11 +109,11 @@ def individual_fit_asp1(subj1, model1):
 
             # standard rmse
             #curr_rmse = rmse(model_i, subj_i)
-            curr_rmse = rmse_diff(model_i, subj_i)
+            curr_rmse = rmse(model_i, subj_i)
             if curr_rmse < best_rmse:
                 best_rmse = curr_rmse
                 best_mrow = mrow
-                # print('best_rmse',curr_rmse)
+                print('best_rmse',curr_rmse)
 
 
             if mindex == model1.last_valid_index():
@@ -138,11 +146,12 @@ def individual_fit_asp3(subj3, model1):
         for mindex, mrow in model1.iterrows():
             model_i = [mrow['mDOC'], mrow['mDOI'], mrow['mPOC'], mrow['mPOI']]
             #curr_rmse = rmse(model_i, subj_i)
-            curr_rmse = rmse_diff(model_i, subj_i)
+            curr_rmse = rmse(model_i, subj_i)
 
             if curr_rmse < best_rmse:
                 best_rmse = curr_rmse
                 best_mrow = mrow
+                print('best_rmse', best_rmse)
 
             if mindex == model1.last_valid_index():
                 best_mrow['min_rmse'] = best_rmse
@@ -155,6 +164,21 @@ def individual_fit_asp3(subj3, model1):
     return subj_fit
     # subj_fit.to_csv('./simulation_data/MODEL1/ASP3MODEL1_reg.csv')
 
+#~~~~~~~~~~~~~~~~~~~~~~~ convert z
+
+def convert_z(model_data, subj_mean, subj_sd):
+    """subj_data = mean of subj"""
+    subj1 = pd.read_csv("./simulation_data/MODEL1/ASP1MODEL1_reg.csv", usecols=['subjID', 'AC', 'AI', 'PC', 'PI', 'resp_accuracy', 'missing_entries'])
+    model1 = pd.read_csv("./simulation_data/MODEL1/MODEL1_wide.csv")
+
+    for srow in subj1.iterrows():
+        ind = pd.DataFrame()
+
+
+    model_data=np.array(model_data)
+    subj_mean=np.array(subj_mean)
+    subj_sd=np.array(subj_sd)
+    return (model_data - subj_mean)/subj_sd
 
 
 
