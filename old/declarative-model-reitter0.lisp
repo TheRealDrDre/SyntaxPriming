@@ -75,6 +75,7 @@
   
 (add-dm (nun) (chase) (robber) (active) (passive) (yes)
         (no) (speech-production) (sentence-comprehension)
+        (verify-sentence-picture)
         (english) (drawing)
         (sentence1 isa sentence
                    string "the nun chases the robber"
@@ -100,24 +101,152 @@
         (speech-goal isa task
                      goal speech-production
                      done no)
+        (comprehend-goal isa task
+                     goal sentence-comprehension
+                     done no)
+        (verify-goal isa task
+                     goal verify-sentence-picture
+                     done no)
         )
 
 ;; Sentence Comprehension and Verification
+;;; picture -> put in goal buffer
+;;; sentence -> put in img buffer 
 
-(p start-verification
+(p interpret-primepicture
+   "Transforms a picture into a semantic representation"
    =goal>
      isa task
      goal sentence-comprehension
-
+     
    =visual>
+     isa picture
+     agent =AGENT
+     verb =VERB
+     object = OBJECT
+
+   ?goal>
+     state free
+
+==>
+
+   ;=visual>
+
+   *goal>
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
+)
+
+(p start-verification
+   "Prepares imaginal buffer and loads agent, oject, and verb in WM"
+   =goal>
+     isa task
+     goal sentence-comprehension
+     agent =AGENT
+     verb =VERB
+     object =OBJECT 
+     done no
+     
+   =visual>
+    "All info is given"
      isa sentence
+     noun1 =AGENT
+     verb =VERB
+     noun2 =OBJECT
+     voice active
+     syntax-correct yes
+     semantics-correct yes
+
+   ?goal>
+   	state free
+   	buffer full
 
    ?imaginal>
+   "Load picture info into wm (imaginal buffer)"
      state free
      buffer empty
 
- ==>
+
+==>
+
+ 	 =visual> 
+
+   +imaginal>
+     isa sentence
+     semantics-correct yes
+
+   +goal>
+      isa task
+      goal verify-sentence-picture
+      agent =AGENT
+      verb =VERB
+      object =OBJECT
+      voice active
+    
+   +retrieval>
+      isa syntactic-structure
+      language english
 )
+
+(p apply-correct-verification
+  "After verify yes: retrieve syntactic-structure and change goal to do production"
+   =goal>
+     isa task
+     goal verify-sentence-picture
+     done no
+
+   =imaginal>
+     isa sentence
+     semantics-correct yes
+
+   ?imaginal>
+     state free  
+
+   =retrieval>
+    state free
+    buffer = full
+==>  
+   +imaginal>
+    isa sentence
+    voice active
+    semantics-correct yes
+
+)
+
+(p speak-correct-match
+   "After applying it, you are done"
+   =imaginal>
+     isa sentence
+     voice active
+     semantics-correct yes
+     
+   =goal>
+     done no
+
+   ?vocal>
+     state free
+
+==>
+     
+   *goal>
+     done yes
+
+   +vocal>
+     isa speak
+     cmd speak
+     string "yes"
+)
+
+
+
+;;; TODO: other conditions
+;(p retrieve-active-semantic-incorrect)
+;(p retrieve-passive-semantic-correct)
+;(p retrieve-passive-semantic-incorrect)
+
+;(p apply-correct-verification)
+;(p speak-incorrect-match)
 
 ;; Production
 
@@ -311,8 +440,17 @@
 )
 
 
-
-(goal-focus speech-goal)
+; see prime picture
+(goal-focus comprehend-goal)
 (set-buffer-chunk 'visual 'picture1)
+
+; read prime sentence
+(goal-focus comprehend-goal)
+(set-buffer-chunk 'visual 'senetnce1)
+
+; see target picture
+;(goal-focus speech-goal)
+;(set-buffer-chunk 'visual 'picture1)
+
 
 )

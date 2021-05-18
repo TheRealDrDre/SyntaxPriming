@@ -1,0 +1,571 @@
+---
+title: "ASP_model_analysis_bic"
+author: "Cher"
+date: "3/24/2021"
+output: html_document
+---
+
+This script is an extension of ASP_model_analysis_bic.R by analyzing the difference between AC-AI, PC-PI
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(gtools)
+library(ggpubr)
+library(rstatix)
+library(ggpubr)
+rm(list = ls())
+subj1 <- read_csv("../subj_data/ASP1/ASP1_subj_wide90.csv") 
+subj2 <- read_csv("../subj_data/ASP3/ASP3_subj_wide142.csv")
+
+model1 = read_csv('./MODEL1/MODEL1_wide.csv') %>% rename(AC.m=DOC,AI.m=DOI,PC.m=POC, PI.m=POI, AC.sd=DOC_sd,AI.sd=DOI_sd,PC.sd=POC_sd, PI.sd=POI_sd)
+model2 = read_csv('./MODEL2/MODEL2_wide.csv') %>% rename(AC.m=DOC,AI.m=DOI,PC.m=POC, PI.m=POI, AC.sd=DOC_sd,AI.sd=DOI_sd,PC.sd=POC_sd, PI.sd=POI_sd)
+model3 = read_csv('./MODEL3/MODEL3_wide.csv') %>% rename(AC.m=DOC,AI.m=DOI,PC.m=POC, PI.m=POI, AC.sd=DOC_sd,AI.sd=DOI_sd,PC.sd=POC_sd, PI.sd=POI_sd)
+
+#load("./ASP_model_data.RData")
+```
+
+
+# SETUP
+func for 4 point estimation
+```{r}
+# single sub to model
+subj2sim <- function(subj, model.r, k, n) {
+  sim0 = subj %>%
+    merge.data.frame(model.r) %>%
+    mutate(AC.z=(AC-AC.m)/pmax(AC.sd, 1e-10),
+           AI.z=(AI-AI.m)/pmax(AI.sd, 1e-10),
+           PC.z=(PC-PC.m)/pmax(PC.sd, 1e-10),
+           PI.z=(PI-PI.m)/pmax(PI.sd, 1e-10),
+           AC.prob_z=dnorm(AC.z, 0, 1), 
+           AI.prob_z=dnorm(AI.z, 0, 1),
+           PC.prob_z=dnorm(PC.z, 0, 1),
+           PI.prob_z=dnorm(PI.z, 0, 1),
+           logL=log(AC.prob_z)+log(AI.prob_z)+log(PC.prob_z)+log(PI.prob_z),
+           bic=convert_bic(k, n, logL))
+  return(sim0)
+}
+```
+
+func for 7 point estimation
+```{r}
+subj2sim <- function(subj, model.r, k, n) {
+  sim0 = subj %>%
+    merge.data.frame(model.r) %>%
+    mutate(AC.z=(AC-AC.m)/pmax(AC.sd, 1e-10),
+           AI.z=(AI-AI.m)/pmax(AI.sd, 1e-10),
+           PC.z=(PC-PC.m)/pmax(PC.sd, 1e-10),
+           PI.z=(PI-PI.m)/pmax(PI.sd, 1e-10),
+           diff.ACAI.z=(diff.ACAI-diff.mACAI)/max(diff.mACAI.sd, 1e-10),
+           diff.PCPI.z=(diff.PCPI-diff.mPCPI)/max(diff.mPCPI.sd, 1e-10),
+           diff.CI.z=(diff.CI-diff.mCI)/max(diff.mCI.sd, 1e-10),
+           
+           AC.prob_z=dnorm(AC.z, 0, 1), 
+           AI.prob_z=dnorm(AI.z, 0, 1),
+           PC.prob_z=dnorm(PC.z, 0, 1),
+           PI.prob_z=dnorm(PI.z, 0, 1),
+           diff.ACAI.prob_z=dnorm(diff.ACAI.z, 0, 1), 
+           diff.PCPI.prob_z=dnorm(diff.PCPI.z, 0, 1), 
+           diff.CI.prob_z=dnorm(diff.CI.z, 0, 1), 
+           
+           logL=log(AC.prob_z)+log(AI.prob_z)+log(PC.prob_z)+log(PI.prob_z)
+           +log(diff.CI.prob_z)+log(diff.ACAI.prob_z)+log(diff.PCPI.prob_z),
+           bic=convert_bic(k, n, logL))
+  return(sim0)
+}
+```
+
+func for calculating bic
+```{r}
+# define bic 
+convert_bic <- function(k, n, logL) {
+  return(k * log(n) - 2 * logL)
+}
+
+subj2model <- function(subj, model, k, n) {
+  datalist = list()
+  for (i in 1:nrow(model)) {
+    model.r=model[i,]
+    dat = subj2sim(subj, model.r, k, n)
+    datalist[[i]] <- dat
+  }
+  result = data.frame(do.call(rbind, datalist))
+  return(result)
+}
+```
+# SUBJ1
+calculate diff.mACAI, diff.mPCPI, and sd of difference
+
+The Central Limit Theorem: 
+Let  have a normal distribution with mean , variance , and standard deviation .
+Let  have a normal distribution with mean , variance , and standard deviation .
+If  X and Y are independent, then X-Y will follow a normal distribution with mean mu1-mu2, variance var1+var2, and standard deviation sqrt(sd1^2+sd2^2).
+
+The varaicen fo a difference is the sum of the varience varc-i = var(c) + var(i)
+```{r}
+# calculate se from proportion
+
+# # calculate combined variance for AC AI
+# calculate_combined_mean_sd <- function(mean1, mean2, sd1, sd2, n1, n2) {
+#   mean_combined = (n1*mean1 + n2*mean2)/(n1+n2)
+#   var_combined = (n1*(sd1^2 + (mean1-mean_combined)^2) + n2*(sd2^2 + (mean2-mean_combined)^2))/(n1+n2)
+#   return(sqrt(var_combined))
+# }
+
+# source: https://online.stat.psu.edu/stat500/lesson/7/7.3/7.3.1/7.3.1.1
+pooled_mean_sd <- function(mean1, mean2, sd1, sd2, n1, n2) {
+  sd_pooled = sqrt( ((n1-1)*sd1^2 + (n2-1)*sd2^2) / (n1+n2-2) )
+  return(sd_pooled)
+}
+
+# source: https://online.stat.psu.edu/stat500/lesson/7/7.1
+diff_mean_sd <- function(sd1, sd2) {
+  sd_diff = sqrt(sd1^2 + sd2^2)
+  return(sd_diff)
+}
+
+# source: https://online.stat.psu.edu/stat500/lesson/7/7.2/7.2.1
+# prop_sd <- function(p1, n1) {
+#   sd1 = p1*(1-p1)/n1
+#   return(sd1)
+# }
+# 
+# prop_diff_sd <- function(p1, p2, n1, n2) {
+#   sd = p1*(1-p1)/n1 + p2*(1-p2)/n2
+#   return (sd)
+# }
+
+# calculate diff between AC.m-AI.m and PC.m-PI.m and sd of difference
+calculate_diff <- function(model1){
+  model1.new = model1 %>% 
+  mutate(C.m = (AC.m+PC.m)/2,
+         I.m = (AI.m+PI.m)/2,
+         C.sd = pooled_mean_sd(AC.m, PC.m, AC.sd, PC.sd, 100, 100),
+         I.sd = pooled_mean_sd(AI.m, PI.m, AI.sd, PI.sd, 100, 100),
+         
+         diff.mACAI = AC.m-AI.m,
+         diff.mPCPI = PC.m-PI.m, 
+         diff.mCI = C.m - I.m,
+         
+         diff.mACAI.sd = diff_mean_sd(AC.sd, AI.sd), 
+         diff.mPCPI.sd = diff_mean_sd(PC.sd, PI.sd),  
+         diff.mCI.sd = diff_mean_sd(C.sd, I.sd), 
+         )
+  return(model1.new)
+}
+
+calculate_prop_diff <- function(model1) {
+  model1.new = model1 %>% 
+  mutate(C.m = (AC.m+PC.m)/2,
+         I.m = (AI.m+PI.m)/2,
+         C.sd = prop_sd(C.m, 100),
+         I.sd = prop_sd(I.m, 100),
+         
+         diff.mACAI = AC.m-AI.m,
+         diff.mPCPI = PC.m-PI.m, 
+         diff.mCI = C.m - I.m,
+         
+         diff.mACAI.sd = prop_diff_sd(AC.m, AI.m, 50, 50),
+         diff.mPCPI.sd = prop_diff_sd(PC.m, PI.m, 50, 50), 
+         diff.mCI.sd = prop_diff_sd(C.m, I.m, 100, 100), 
+         )
+  return(model1.new)
+}
+```
+
+
+7 point: calculate diff 
+```{r}
+# calculate diff.ACAI
+subj1 = subj1 %>% mutate(diff.ACAI = AC-AI, diff.PCPI = PC-PI, diff.CI = C-I)
+subj2 = subj2 %>% mutate(diff.ACAI = AC-AI, diff.PCPI = PC-PI, diff.CI = C-I)
+
+
+model1 = calculate_diff(model1)
+model2 = calculate_diff(model2)
+model3 = calculate_diff(model3)
+
+# calculate diff.ACAI
+```
+
+func categorize best fit model
+```{r}
+# categorize best model
+categorize_best_model <- function(subj1model1, subj1model2, subj1model3) {
+  subj1models <- subj1model1 %>% 
+  group_by(subjID) %>% 
+  slice(which.min(bic)) %>% 
+  select(subjID:mid, bic, logL, AC.m:PI.m) %>%
+  full_join(subj1model2 %>% 
+              group_by(subjID) %>% 
+              slice(which.min(bic)) %>% 
+              select(subjID, mid, bic, logL), 
+            by = 'subjID', suffix=c('.m1', '.m2')) %>%
+  full_join(subj1model3 %>% 
+              group_by(subjID) %>% 
+              slice(which.min(bic)) %>% 
+              select(subjID, mid, bic, logL) %>%
+              setNames(c(names(.)[1], paste0(names(.)[-1],".m3"))) %>% 
+              arrange(subjID), by = 'subjID') %>%
+  ungroup(subjID)
+  
+  # categorize
+  bestmodels <- subj1models %>%
+  rowwise() %>%
+  mutate(min_bic = pmin(bic.m1, bic.m2, bic.m3)) %>%
+  bind_cols(best_model = colnames(subj1models %>% select(starts_with("bic")))[apply(subj1models %>% 
+                                                                                  select(starts_with("bic")),1,which.min)])
+  
+  return (bestmodels)
+}
+
+# calcualte relative loglikelihood
+calculate_relativelogL <- function(subj1bestmodels) {
+  LL1 <- subj1bestmodels %>% 
+  select(logL.m1, logL.m2, logL.m3) %>% 
+  colSums(na.rm = TRUE)
+  rLL1 <- LL1-min(LL1)
+  rLL.dat1 <- data.frame(LL = LL1, rLL = rLL1,
+                       dLL.nullm1 = c(LL1[[1]]-LL1[[1]], LL1[[2]]-LL1[[1]], LL1[[3]]-LL1[[1]]),
+                       dLL.nullm2 = c(LL1[[1]]-LL1[[2]], LL1[[2]]-LL1[[2]], LL1[[3]]-LL1[[2]]),
+                       dLL.nullm3 = c(LL1[[1]]-LL1[[3]], LL1[[2]]-LL1[[3]], LL1[[3]]-LL1[[3]]),
+                       model=c("m1", "m2", "m3"))
+  return (rLL.dat1)
+}
+
+
+# calculate group bayes factor
+calculate_GBF <- function(rLL) {
+  rLL %>%
+    select(model, starts_with("dLL")) %>%
+    mutate_at(vars(matches("dLL")), exp)
+}
+
+```
+
+
+plot func
+```{r}
+# plot pie
+plot_piechart <- function(subj1bestmodels) {
+  plot.pie1 <- subj1bestmodels %>%
+  group_by(best_model) %>% 
+  summarise(n = n()) %>% 
+  mutate(freq = (round(n / sum(n), 4)),best_model = factor(gsub("min.", "", best_model))) %>% 
+  arrange(desc(best_model)) %>%
+  mutate(ypos = cumsum(freq) - 0.5*freq) %>%
+  ggplot(aes(x="", y=freq, fill=best_model)) +
+  geom_bar(stat="identity", width = 1, color="white") +
+  geom_text(aes(y = ypos,label = paste0(freq*100, "%")), color = "white", size=8) +
+  coord_polar("y", start = 0) +
+  scale_fill_discrete(name = "Best fit model", 
+                      labels = c("m1: Declarative Model", 
+                                 "m2: Associative Model", 
+                                 "m3: Reinforcement Model")) +
+  ggtitle('The percentage of subjects best fit by model simulation output') +
+  theme_void() 
+  return(plot.pie1)
+}
+
+# plot hist
+plot_bichist <- function(subj1model1, subj1model2, subj1model3) {
+  plot.hist1 <- subj1model1 %>% select(bic) %>% mutate(model="m1") %>% 
+  bind_rows(subj1model2 %>% select(bic) %>% mutate(model="m2")) %>%
+  bind_rows(subj1model3 %>% select(bic) %>% mutate(model="m3")) %>%
+  filter(bic<500) %>%
+  mutate(model=factor(model)) %>%
+  gghistogram(x = "bic", bins = 100, col = "white", fill = "model", alpha = .9)  + 
+  scale_fill_discrete(name = "Models", 
+                      labels = c("m1: Activation Model", 
+                                 "m2: Associative Model", 
+                                 "m3: Reinforcement Model")) +
+  theme(text = element_text(size = 20))     
+  return(plot.hist1)
+}
+
+# plot relative log-likelihood
+plot_relativelogL <- function(rLL.dat1) {
+  plot.llplot1 <- rLL.dat1 %>% ggbarplot(x="model", y="rLL", fill="model",lab.nb.digits = 2, 
+          label = rLL.dat1$rLL, lab.pos = "in", lab.size = 8, lab.col = "white") +
+    labs(y = "relative log-likelihood") +
+  theme(text = element_text(size = 20), legend.position="None")
+  return(plot.llplot1)
+}
+
+```
+
+# SUBJ1
+```{r}
+# combine subj + model
+subj1model1  = subj2model(subj1, model1, k=3, n=4) #90*150=13,500
+subj1model2 = subj2model(subj1, model2, k=5, n=4) #90*1440=129,600
+subj1model3 = subj2model(subj1, model3, k=4, n=4) #90*900=81,900
+
+# categorize best
+subj1bestmodels = categorize_best_model(subj1model1, subj1model2, subj1model3) %>% 
+  filter(bad_subj==F) # remove bad subj
+```
+
+```{r}
+rLL.dat1 <- calculate_relativelogL(subj1bestmodels)
+gbf.dat1 <- calculate_GBF(rLL.dat1)
+
+plot.pie1 <- plot_piechart(subj1bestmodels)
+plot.hist1 <- plot_bichist(subj1model1, subj1model2, subj1model3) + ggtitle("Experiment 1 Fit: BIC distribution of three models")
+plot.llplot1 <- plot_relativelogL(rLL.dat1) + ggtitle("Experiment 1 Fit: Relative Log-Likelihood")
+
+
+# combine three plots
+plot.exp1 <- ggarrange(plot.hist1, plot.llplot1, ncol = 2, nrow = 1, labels = c("A", "B"), common.legend = T, legend = "bottom") 
+
+plot.exp1
+```
+
+test
+why relative-ll shows m2 is the best, but pie chart shows m3 is the best
+```{r}
+rLL.dat1
+subj1model1 %>% select(AC, AC.m, AC.sd, AC.z) %>%
+  mutate(((AC-AC.m)/max(AC.z, 1e-10))==AC.z, ((AC-AC.m)/AC.z) == AC.z)
+
+subj1model1 %>% select(ends_with(".prob_z"), logL, bic) %>% #colnames()
+  mutate(log(AC.prob_z) + log(AI.prob_z) + log(PC.prob_z) + log(PI.prob_z))
+
+# check probz and logL inf - done
+subj1model1 %>% select(mid, ends_with(".prob_z"), logL, bic) %>% 
+  filter_at(vars(-mid, -logL, -bic), any_vars(. == 0.0)) %>% View()
+
+# check z score calculation
+subj1model1 %>% select(ends_with(".prob_z"), logL, bic) %>%
+  mutate(v1=log(AC.prob_z) + log(AI.prob_z) + log(PC.prob_z) + log(PI.prob_z), convert_bic(logL=v1,k=3,n=4)) 
+
+# check bic 
+temp1 <- subj1model1 %>% select(mid, subjID, logL, bic) %>% filter_all(any_vars(!is.infinite(bic))) %>%
+  group_by(subjID) %>%
+  slice(which.min(bic)) 
+temp2 <- subj1model2 %>% select(mid, subjID, logL, bic) %>% filter_all(any_vars(!is.infinite(bic))) %>%
+  group_by(subjID) %>%
+  slice(which.min(bic)) 
+temp3 <- subj1model3 %>% select(mid, subjID, logL, bic) %>% filter_all(any_vars(!is.infinite(bic))) %>%
+  group_by(subjID) %>%
+  slice(which.min(bic)) 
+
+full_join(temp2, temp3, by="subjID", suffix=c(".m2", ".m3")) %>% select(subjID, starts_with("bic")) %>%
+  mutate(diff.m2m3 = bic.m2-bic.m3) %>%
+  #gather("m", "bic", bic.m2:bic.m3) %>%
+  #ggbarplot(x="subjID", y="diff.m2m3")
+  gghistogram(x="diff.m2m3", binwidth = .1)
+rLL.dat1
+
+
+# check relatitve ll
+subj1bestmodels %>% select(ends_with("m1"))
+subj1model3
+
+#calculate_relativelogL()
+LL1 <- subj1bestmodels %>% select(starts_with("logL")) %>%
+  colSums()
+rLL1 <- LL1-min(LL1)
+
+subj1bestmodels %>%
+  gghistogram(x="best_model", stat="count")
+```
+
+
+
+# SUBJ2
+
+Comb
+```{r}
+subj2 <- subj2 %>% rename(subjID=surveyID, AC=DOC,AI=DOI, PC=POC, PI=POI)
+# combine subj + model
+subj2model1  = subj2model(subj2, model1, k=3, n=4) #141*150=21,150
+subj2model2 = subj2model(subj2, model2, k=5, n=4) #141*1440=203,040
+subj2model3 = subj2model(subj2, model3, k=4, n=4) #141*900=126,900
+
+
+# categorize best
+subj2bestmodels = categorize_best_model(subj2model1, subj2model2, subj2model3) %>%
+  filter(bad_subj == F)
+  #anti_join(subj2 %>% filter(bad_subj==TRUE), by="subjID") # remove bad subj
+
+
+# subj2model1.new  = subj2model(subj2.new, model1, k=3, n=4) #125*150=21,150
+# subj2model2.new = subj2model(subj2.new, model2, k=5, n=4) #125*1440=203,040
+# subj2model3.new = subj2model(subj2.new, model3, k=4, n=4) #125*900=126,900
+# 
+# subj2model1.old  = subj2model(subj2.old, model1, k=3, n=4) #141*150=21,150
+# subj2model2.old = subj2model(subj2.old, model2, k=5, n=4) #141*1440=203,040
+# subj2model3.old = subj2model(subj2.old, model3, k=4, n=4) #141*900=126,900
+# 
+# subj2bestmodels.new = categorize_best_model(subj2model1.new, subj2model2.new, subj2model3.new)
+# subj2bestmodels.old = categorize_best_model(subj2model1.old, subj2model2.old, subj2model3.old)
+```
+
+
+
+Visualize
+```{r}
+rLL.dat2 <- calculate_relativelogL(subj2bestmodels) 
+gbf.dat2 <- calculate_GBF(rLL.dat2)
+
+
+plot.pie2 <- plot_piechart(subj2bestmodels)
+plot.hist2 <- plot_bichist(subj2model1, subj2model2, subj2model3) + 
+  ggtitle("Experiment 2 Fit: BIC distribution of three models") +
+  theme(text = element_text(size = 20))     
+
+plot.llplot2 <- plot_relativelogL(rLL.dat2) + 
+  ggtitle("Experiment 2 Fit: Relative Log-Likelihood") +
+  theme(text = element_text(size = 20))     
+
+
+# combine three plots
+plot.exp2 = ggarrange(plot.hist2, plot.llplot2, ncol = 2, nrow = 1, labels = c("A", "B"), common.legend = T, legend = "bottom")
+plot.exp2
+```
+
+
+# TEST
+```{r}
+subj1model1 %>%  colnames()
+subj1model1.temp <- subj1model1 %>% select(AC, AC.m, AC.sd, AC.z)
+subj1model1.temp %>% mutate((AC-AC.m)/max(AC.sd, 1e-10))
+
+subj1model1 %>% select(ends_with(".sd")) 
+```
+
+
+# INDIVIDUAL DIFF 
+```{r}
+# 6 subject plots
+subj1bestmodels.temp = subj1bestmodels %>%  
+  select(subjID, mid.m1, mid.m2, mid.m3, bic.m1, bic.m2, bic.m3, AC:PI, AC.m.m1:PI.m.m1, 
+         AC.m.m2:PI.m.m2, AC.m.m3:PI.m.m3,min_bic, best_model) %>%
+  arrange(min_bic) %>%
+  group_by(best_model) %>% slice(1:2)
+
+plot.indi1 = subj1bestmodels.temp %>%
+  gather('P_type', 'mean_prop', AC:PI.m.m3) %>% 
+  mutate(P_type = str_replace(P_type, '.m', ''),
+         D_type = case_when(str_detect(P_type, ".m1") ~ "m1", str_detect(P_type, ".m2") ~ "m2", str_detect(P_type, ".m3") ~ "m3", TRUE ~ "subject"),
+         P_type = case_when(str_detect(P_type, "AC") ~ "AC", str_detect(P_type, "AI") ~ "AI", str_detect(P_type, "PC") ~ "PC",  str_detect(P_type, "PI") ~ "PI", TRUE ~ "subject"),
+         syn_voice = ifelse(P_type=="AC"|P_type=="AI", "Active", "Passive"),
+         syn_corr = ifelse(P_type=="AC"|P_type=="PI", "Correct", "Incorrect")) %>% 
+  ggplot(aes(x = syn_voice, y = mean_prop, group = interaction(syn_voice, syn_corr), col = syn_corr)) +
+  geom_point(aes(shape = D_type), size = 5, position = position_dodge(width=0.75)) +
+  scale_shape_manual(name="Model vs. Subject", values=c(0, 1, 2, 8)) +
+  ggsci::scale_color_jco(name="Prime Condition: syntactic correctness") +
+  geom_text(data=subj1bestmodels.temp, aes(x=1.5, y=1.2, label=paste0("min bic: ", round(min_bic, 2))), 
+            inherit.aes=FALSE, parse=FALSE) +
+  geom_text(data=subj1bestmodels.temp, aes(x=1.5, y=1.1, label=paste0("best fit model: ", str_replace(best_model, 'bic.', ''))), 
+            inherit.aes=FALSE, parse=FALSE) +
+  facet_grid(.~subjID) +
+  ggtitle("Experiment 1: Individual subject fit by models") + 
+  labs(x = "Conditions", y = "Proportion of Actice descriptions") + 
+  theme(legend.position = 'bottom')
+
+plot.indi1
+```
+
+```{r}
+# 6 subject plots
+subj2bestmodels.temp = subj2bestmodels.new %>%
+  tibble::rowid_to_column("subjID2") %>%
+  select(subjID2, mid.m1, mid.m2, mid.m3, bic.m1, bic.m2, bic.m3, min_bic, best_model, AC:PI, AC.m.m1:PI.m.m1, AC.m.m2:PI.m.m2, AC.m.m3:PI.m.m3) %>%
+  arrange(min_bic) %>%
+  group_by(best_model) %>% slice(1:2)
+
+plot.indi2 = subj2bestmodels.temp %>%
+  gather('P_type', 'mean_prop', AC:PI.m.m3) %>% 
+  mutate(P_type = str_replace(P_type, '.m', ''),
+         D_type = case_when(str_detect(P_type, ".m1") ~ "m1", str_detect(P_type, ".m2") ~ "m2", str_detect(P_type, ".m3") ~ "m3", TRUE ~ "subject"),
+         P_type = case_when(str_detect(P_type, "AC") ~ "AC", str_detect(P_type, "AI") ~ "AI", str_detect(P_type, "PC") ~ "PC",  str_detect(P_type, "PI") ~ "PI", TRUE ~ "subject"),
+         syn_voice = ifelse(P_type=="AC"|P_type=="AI", "DO", "PD"),
+         syn_corr = ifelse(P_type=="AC"|P_type=="PI", "Correct", "Incorrect")) %>% 
+  ggplot(aes(x = syn_voice, y = mean_prop, group = interaction(syn_voice, syn_corr), col = syn_corr)) +
+  geom_point(aes(shape = D_type), size = 5, position = position_dodge(width=0.75)) +
+  facet_grid(.~subjID2) +
+  geom_text(data=subj2bestmodels.temp, aes(x=1.5, y=1.2, label=paste0("min bic: ", round(min_bic, 2))), 
+            inherit.aes=FALSE, parse=FALSE) +
+  geom_text(data=subj2bestmodels.temp, aes(x=1.5, y=1.1, label=paste0("best fit model: ", best_model)), 
+            inherit.aes=FALSE, parse=FALSE) +
+  ggtitle("Experiment 2: Individual subject fit by models") + 
+  labs(x = "Conditions", y = "Proportion of Actice descriptions") + 
+  scale_shape_manual(name="Model vs. Subject", values=c(0, 1, 2, 8)) +
+  ggsci::scale_color_jco(name="Prime Condition: syntactic correctness") +
+  theme(legend.position = 'bottom')
+
+
+plot.indi1
+plot.indis = ggarrange(plot.indi1, plot.indi2,
+          labels = c("A", "B"),
+          ncol = 1, nrow = 2)
+```
+
+
+# HIST
+
+############################################
+
+
+```{r}
+subj1models.histdat = subj1model1 %>% select(bic) %>% mutate(model="m1") %>% 
+  bind_rows(subj1model2 %>% select(bic) %>% mutate(model="m2")) %>%
+  bind_rows(subj1model3 %>% select(bic) %>% mutate(model="m3")) %>%
+  filter(bic<500) %>%
+  mutate(model=factor(model))
+  #mutate(model=factor(case_when(model=="m1" ~"Declarative model", model=="m2" ~"Spreading model",model=="m3" ~"Reinnforcement model", TRUE ~ "")))
+
+subj2models.histdat = subj2model1 %>% select(bic) %>% mutate(model="m1") %>% 
+  bind_rows(subj2model2 %>% select(bic) %>% mutate(model="m2")) %>%
+  bind_rows(subj2model3 %>% select(bic) %>% mutate(model="m3")) %>%
+  filter(bic<500) %>%
+  mutate(model=factor(model))
+  #mutate(model=factor(case_when(model=="m1" ~"Declarative model", model=="m2" ~"Spreading model",model=="m3" ~"Reinnforcement model", TRUE ~ "")))
+
+levels(subj1models.histdat$model) <- c("Declarative model","Associative model", "Reinnforcement model")
+levels(subj2models.histdat$model) <- c("Declarative model","Associative model", "Reinnforcement model")
+
+
+bic.histplot = ggarrange(
+  subj1models.histdat %>% gghistogram(x = "bic", bins = 100, col = "model", fill = "model", alpha = .3) +
+    ggtitle("Experiment1: BIC histogram of three models "),
+  subj2models.histdat %>% gghistogram(x = "bic", bins = 100, col = "model", fill = "model", alpha = .3) +
+    ggtitle("Experiment2: BIC histogram of three models "), 
+  subj1models.histdat %>% ggdensity(x="bic", col = "model",  fill = "model", alpha = .3) + theme(legend.position = "none"),
+  subj2models.histdat %>% ggdensity(x="bic", col = "model", fill = "model", alpha = .3) + theme(legend.position = "none"),
+  common.legend = TRUE, legend = "bottom"
+)
+
+bic.histplot
+```
+
+
+# Simulation Plot
+```{r}
+#Simulation plot
+plot_simulation <- function(dat.model) {
+  plot.model <- dat.model %>% select(mid, AC.m, AI.m, PC.m, PI.m) %>% 
+  gather("P_type", "prop_isactive", AC.m:PI.m) %>% 
+  mutate(syn_voice = ifelse(P_type=="AC.m"|P_type=="AI.m", "Active", "Passive"),
+         syn_corr = ifelse(P_type=="AC.m"|P_type=="PC.m", "Correct", "Incorrect")) %>%
+  ggbarplot(x = "syn_corr", y = "prop_isactive", add = "mean_ci",
+            fill = "syn_voice", color = "black",size = 1, 
+            palette = 'jco', position = position_dodge(0.8))  + 
+  ylim(0, 1) + 
+  labs(x = "Prime grammaticality", 
+       y = "Mean proportion of active descriptions", 
+       fill = "Prime syntactic structure")
+  return (plot.model)
+}
+
+plot.simulation <- ggarrange(plot_simulation(model1) + ggtitle("Averaged simulation results of model 1 (Activation Model)"), 
+          plot_simulation(model2) + ggtitle("Averaged simulation results of model 2 (Associative Model)"),
+          plot_simulation(model3) + ggtitle("Averaged simulation results of model 3 (Reinforcement Model)"), 
+          ncol = 3, nrow=1)
+  
+
+plot.simulation
+```
+
+

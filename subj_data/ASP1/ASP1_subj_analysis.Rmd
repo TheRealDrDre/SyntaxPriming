@@ -1,0 +1,466 @@
+---
+title: "ASP1_subj_analysis"
+author: "Cher"
+date: "3/25/2021"
+output:
+  html_document:
+    code_folding: hide
+    theme: yeti
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  word_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse) # handy utility functions
+library(dplyr)
+library(ggpubr)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(lme4)
+library(sjPlot)
+library(ggeffects)
+rm(list = ls())
+options(digits = 4)
+data_raw <- read_csv("./ASP1_double_checked90.csv")
+```
+
+# SETUP
+clean data: we applied the exclusion criteria, subjects who had missing entries > 4 will be excluded from anlaysis
+```{r clean}
+data_raw %>% filter(isactive.checked==0) %>% nrow() # 643
+data_raw %>% filter(isactive.checked==1) %>% nrow() #2552
+data_raw %>% filter(is.na(isactive.checked)) %>% nrow() #2552
+
+# pre-processing raw data
+data_dirty <- data_raw %>%
+  mutate(surveyID = factor(surveyID),
+         P_type = factor(P_type), 
+         isactive = isactive.checked,
+         error = ifelse(error_type==1|error_type==2, TRUE,FALSE)) %>%
+  select(-X1, -isactive.checked, -isactive.raw, -error_type)  #46 NA
+
+
+# remove 17 subj
+subj_summary = data_dirty %>% group_by(subjID) %>% 
+  dplyr::summarise(resp_accuracy=mean(resp_iscorrect, na.rm=TRUE), 
+                   mean_prop=mean(isactive, na.rm=TRUE), 
+                   missing_entries=sum(is.na(isactive)),
+                   prod_error_rate=mean(error, na.rm = TRUE))
+
+# missing >4  entries
+bad_subj1 <- subj_summary %>% filter(missing_entries > 4)
+data_clean <- data_dirty %>% anti_join(bad_subj1)
+```
+
+Convert to wide format for model fit
+
+include NA
+```{r wide}
+# data_dirty$isactive = factor(na.replace(data_dirty$isactive, "na"))
+# 
+# subj_wide_4 = data_dirty %>%
+#   group_by(subjID, P_type, .drop = FALSE) %>%
+#   add_tally() %>%
+#   ungroup() %>%
+#   group_by(subjID, P_type, isactive, .drop = FALSE) %>%
+#   dplyr::summarise(count = n(), total = mean(n)) %>%
+#   mutate(prop = round(count/total, digits = 10)) %>% 
+#   select(-count, -total) %>% 
+#   na.replace(0.0) %>%
+#   spread(isactive, prop) %>%
+#   mutate(prop.passive=`0`, prop.active=`1`, prop.na = na) %>% 
+#   select(-`0`, -`1`, -na, -prop.passive, -prop.na) %>% 
+#   spread(P_type, prop.active) 
+# 
+# subj_wide_ci = data_dirty %>%
+#   group_by(subjID, syn_voice, .drop = FALSE) %>%
+#   add_tally() %>%
+#   ungroup() %>%
+#   group_by(subjID, syn_voice, isactive, .drop = FALSE) %>%
+#   dplyr::summarise(count = n(), total = mean(n)) %>%
+#   mutate(prop = round(count/total, digits = 10)) %>% 
+#   select(-count, -total) %>% 
+#   na.replace(0.0) %>%
+#   spread(isactive, prop) %>%
+#   mutate(prop.passive=`0`, prop.active=`1`, prop.na = na) %>% 
+#   select(-`0`, -`1`, -na, -prop.passive, -prop.na) %>% 
+#   spread(syn_voice, prop.active)
+# 
+# subj_wide_ap = data_dirty %>%
+#   group_by(subjID, syn_corr, .drop = FALSE) %>%
+#   add_tally() %>%
+#   ungroup() %>%
+#   group_by(subjID, syn_corr, isactive, .drop = FALSE) %>%
+#   dplyr::summarise(count = n(), total = mean(n)) %>%
+#   mutate(prop = round(count/total, digits = 10)) %>% 
+#   select(-count, -total) %>% 
+#   na.replace(0.0) %>%
+#   spread(isactive, prop) %>%
+#   mutate(prop.passive=`0`, prop.active=`1`, prop.na = na) %>% 
+#   select(-`0`, -`1`, -na, -prop.passive, -prop.na) %>% 
+#   spread(syn_corr, prop.active)
+# 
+# subj_wide90 = subj_wide_ap %>% left_join(subj_wide_ci, by = "subjID") %>% 
+#   left_join(subj_wide_4, by = "subjID") %>% 
+#   right_join(subj_summary, by = "subjID")  %>%
+#   mutate(bad_subj = if_else(subjID %in% bad_subj1$subjID, TRUE, FALSE))
+# 
+# 
+# write_csv(subj_wide90, "./ASP1_subj_wide90.csv")
+```
+
+exclude NA
+```{r}
+subj_wide_4 = data_dirty %>%
+  group_by(subjID, P_type, .drop = FALSE) %>%
+  dplyr::summarise(prop.active=mean(isactive, na.rm=T)) %>%
+  spread(P_type, prop.active) 
+
+subj_wide_ci = data_dirty %>%
+  group_by(subjID, syn_voice, .drop = FALSE) %>%
+  dplyr::summarise(prop.active=mean(isactive, na.rm=T)) %>%
+  spread(syn_voice, prop.active)
+
+subj_wide_ap = data_dirty %>%
+  group_by(subjID, syn_corr, .drop = FALSE) %>%
+  dplyr::summarise(prop.active=mean(isactive, na.rm=T)) %>%
+  spread(syn_corr, prop.active)
+
+subj_wide90 = subj_wide_ap %>% left_join(subj_wide_ci, by = "subjID") %>% 
+  left_join(subj_wide_4, by = "subjID") %>% 
+  right_join(subj_summary, by = "subjID")  %>%
+  mutate(bad_subj = if_else(subjID %in% bad_subj1$subjID, TRUE, FALSE))
+
+#write_csv(subj_wide90, "./ASP1_subj_wide90.csv")
+subj_wide90 %>% head()
+```
+
+# PROP TABLE
+easy: rm na from data
+```{r rm_na}
+# proportion data: exclude na responses in proportion
+tab1.rmna <- data_clean %>%
+  ungroup() %>%
+  group_by(syn_voice) %>%
+  dplyr::summarise(prop_isactive = mean(isactive, na.rm=TRUE))
+
+tab2.rmna <- data_clean %>%
+  group_by(syn_corr) %>%
+  dplyr::summarise(prop_isactive = mean(isactive, na.rm=TRUE))
+
+tab3.rmna <- data_clean %>%
+  group_by(syn_voice, syn_corr) %>%
+  dplyr::summarise(prop_isactive = mean(isactive, na.rm=TRUE))
+
+tab1.rmna; tab2.rmna; tab3.rmna
+```
+
+difficult: keep na in prop data
+```{r keep_na}
+tab1.na <- data_clean %>%
+  group_by(syn_voice) %>%
+  add_tally() %>%
+  ungroup() %>%
+  group_by(syn_voice, isactive) %>%
+  dplyr::summarise(count = n(), total = mean(n)) %>%
+  mutate(prop = round(count/total, 4)) 
+
+tab2.na <- data_clean %>%
+  group_by(syn_corr) %>%
+  add_tally() %>%
+  ungroup() %>%
+  group_by(syn_corr, isactive) %>%
+  dplyr::summarise(count = n(), total = mean(n)) %>%
+  mutate(prop.active = round(count/total, 4))
+
+tab3.na <- data_clean %>%
+  group_by(syn_voice, syn_corr) %>%
+  add_tally() %>%
+  ungroup() %>%
+  group_by(syn_voice, syn_corr, isactive) %>%
+  dplyr::summarise(count = n(), total = mean(n)) %>%
+  mutate(prop.active = round(count/total, 4))
+
+tab1.na; tab2.na; tab3.na
+
+```
+
+# STAT ANALYSIS
+
+logistic mixed effect model
+- main effects
+```{r main_effect}
+# set ref
+data_clean <- data_clean %>% mutate(syn_voice=if_else(syn_voice=="A", "Active", syn_voice), 
+                      syn_voice=if_else(syn_voice=="P", "Passive", syn_voice),
+                      syn_corr=if_else(syn_corr=="C", "Correct", syn_corr), 
+                      syn_corr=if_else(syn_corr=="I", "Incorrect", syn_corr))
+
+data_clean$syn_voice = factor(data_clean$syn_voice, levels = c("Passive","Active"))
+data_clean$syn_corr = factor(data_clean$syn_corr, levels = c("Incorrect","Correct"))
+
+# 3 main effect
+summary(m0 <- glmer(isactive ~ syn_voice + syn_corr + factor(verif_ans) + (1|subjID), 
+                    data=data_clean, family = binomial(link = "logit")), control=glmerControl(optimizer="bobyqa"), na.action=na.pass)
+
+# 3 main effect + 2 way interaction
+summary(m1 <- glmer(isactive ~ syn_voice * syn_corr + factor(verif_ans) + (1|subjID), data=data_clean, family = binomial(link = "logit")), control=glmerControl(optimizer="bobyqa"))
+
+# 3 main effect + 3 way interaction
+summary(m2 <- glmer(isactive ~ syn_voice * syn_corr * factor(verif_ans) + (1|subjID), data=data_clean, family = binomial(link = "logit")), control=glmerControl(optimizer="bobyqa"))
+```
+
+main effect control for semantics
+```{r main_effect control for semantics}
+# main priming effect control for semantic = 0
+summary(m1.0 <- glmer(isactive ~ syn_voice + (1|subjID), data=data_clean %>% filter(verif_ans==0), family = binomial(link = "logit")), control=glmerControl(optimizer="bobyqa"))
+
+# main priming effect control for semantic = 1
+summary(m1.1 <- glmer(isactive ~ syn_voice + (1|subjID), data=data_clean %>% filter(verif_ans==1), family = binomial(link = "logit")), control=glmerControl(optimizer="bobyqa"))
+```
+
+post hoc comparison
+```{r post hoc comparison}
+# priming effect control for grammatical
+summary(m3 <- glmer(isactive ~  syn_voice + (1|subjID), data=data_clean %>% filter(syn_corr=="Correct"), family = binomial(link = "logit")))
+
+# priming effect control for ungrammatical
+summary(m4 <- glmer(isactive ~  syn_voice + (1|subjID), data=data_clean %>% filter(syn_corr=="Incorrect"), family = binomial(link = "logit")))
+
+# grammaticality effect control for A
+summary(m5 <- glmer(isactive ~  syn_corr + (1|subjID), data=data_clean %>% filter(syn_voice=="Active"), family = binomial(link = "logit")))
+
+# grammaticality effect control for P
+summary(m6 <- glmer(isactive ~  syn_corr + (1|subjID), data=data_clean %>% filter(syn_voice=="Passive"), family = binomial(link = "logit")))
+
+# grammaticality effect control for A & semantics = 1
+summary(m5.1 <- glmer(isactive ~  syn_corr + (1|subjID), data=data_clean %>% filter(syn_voice=="Active" & verif_ans==1), family = binomial(link = "logit")))
+
+# grammaticality effect control for A & semantics = 0
+summary(m5.0 <- glmer(isactive ~  syn_corr + (1|subjID), data=data_clean %>% filter(syn_voice=="Active" & verif_ans==0), family = binomial(link = "logit")))
+
+# grammaticality effect control for P & semantics = 1
+summary(m6.1 <- glmer(isactive ~  syn_corr + (1|subjID), data=data_clean %>% filter(syn_voice=="Passive" & verif_ans==1), family = binomial(link = "logit")))
+
+# grammaticality effect control for P & semantics =0
+summary(m6.0 <- glmer(isactive ~  syn_corr + (1|subjID), data=data_clean %>% filter(syn_voice=="Passive" & verif_ans==0), family = binomial(link = "logit")))
+
+```
+
+Others
+```{r others}
+# verification rate 
+summary(m7 <- glmer(resp_iscorrect ~  syn_voice * syn_corr * factor(verif_ans) + (1|subjID), data=data_clean, family = binomial(link = "logit")))
+tab_model(m7, show.ci = FALSE, show.se = TRUE, show.stat = TRUE, show.loglik = TRUE, p.style = "numeric_stars", prefix.labels = "varname")
+
+
+# post hoc other predictors - no use
+summary(glmer(isactive ~  syn_voice + syn_corr + factor(verif_ans) + verif_rt + descr_rt + (1|subjID), data=data_clean, family = binomial(link = "logit")))
+summary(glmer(isactive ~  syn_voice + syn_corr + factor(T_verb) +(1|subjID), data=data_clean, family = binomial(link = "logit")))
+
+# error type
+summary(m8 <- glmer(factor(error) ~  syn_voice * syn_corr + factor(verif_ans) + (1|subjID), data=data_clean, family = binomial(link = "logit")))
+ggpredict(m8, "syn_corr") %>% plot()
+tab_model(m8, show.ci = FALSE, show.se = TRUE, show.stat = TRUE, show.loglik = TRUE, p.style = "numeric_stars", prefix.labels = "varname")
+
+```
+
+
+
+# PLOT
+prep plot df
+```{r df}
+library(ggsignif)
+# set plot ref
+data_clean$syn_voice = factor(data_clean$syn_voice, levels = c("Active","Passive"))
+data_clean$syn_corr = factor(data_clean$syn_corr, levels = c("Correct","Incorrect"))
+
+# rm na
+df_prop.rmna <- data_clean %>%
+  group_by(subjID, syn_voice, syn_corr, verif_ans) %>%
+  dplyr::summarise(prop_isactive = mean(isactive,  rm.na=TRUE))
+
+# keep na
+df_prop.na <- data_clean %>%
+  mutate(isactive = factor(replace_na(isactive, "na"))) %>%
+  group_by(subjID, syn_voice, syn_corr, verif_ans) %>%
+  add_tally() %>% 
+  ungroup() %>%
+  group_by(subjID, syn_voice, syn_corr, verif_ans, isactive) %>%
+  dplyr::summarise(count = n(), total = mean(n, na.rm = FALSE)) %>% 
+  mutate(prop_isactive = round(count/total, 4)) %>%
+  filter(isactive==1) %>%
+  select(-isactive)
+
+```
+
+prep plot func
+```{r plot func}
+# # effect of grammaticality
+# plot.base <- function(dat, semantic) {
+#   if (semantic=="na") { dat.base = dat
+#   } else { dat.base = dat %>% filter(verif_ans==semantic) } # control semantics or not }
+#   
+#   p0 <- dat.base %>%
+#     ggbarplot(x = "syn_voice", y = "prop_isactive", add = c("mean"), 
+#               color = "syn_corr", size = 1, 
+#               palette = 'jco', position = position_dodge(0.8),
+#               label = TRUE, label.pos = "in",  lab.nb.digits = 2, lab.vjust = 5) 
+#   return (p0)
+# }
+# plot.estimate <- function(p0, m2, semantic) {
+#   if (semantic=="na") { dat.estimate = ggpredict(m2, c('syn_voice', 'syn_corr'))
+#   } else { dat.estimate = ggpredict(m2, c('syn_voice', 'syn_corr', 'verif_ans')) %>% filter(facet==semantic) }
+#   
+#   p1 <- p0 + geom_point(data=dat.estimate, 
+#                         mapping = aes(x=x, y=predicted, col = forcats::fct_rev(group), group = forcats::fct_rev(group)), 
+#                         position = position_dodge(width = .8), size=3) + 
+#     geom_errorbar(data=dat.estimate,
+#                   mapping = aes(x=x, y=predicted, col = forcats::fct_rev(group), 
+#                                 group = forcats::fct_rev(group), ymin = conf.low, ymax = conf.high),
+#                   position = position_dodge(width=0.8), width = .1)
+#   return (p1)
+# }
+# plot.signif <- function(p1, m1, m5, m6) {
+#   m1.tbl <- summary(m1)$coefficients %>% as_data_frame() %>% slice(2) %>%
+#     mutate(pstar = case_when(`Pr(>|z|)`<.001 ~ "***", 
+#                              `Pr(>|z|)`<.01&`Pr(>|z|)`>.001 ~ "**", 
+#                              `Pr(>|z|)`<.05&`Pr(>|z|)`>.01 ~ "*", 
+#                              TRUE ~ "n.s."))
+#            
+#   m5.tbl <- summary(m5)$coefficients %>% as_data_frame() %>% slice(2) %>%
+#     mutate(pstar = case_when(`Pr(>|z|)`<.001 ~ "***", 
+#                              `Pr(>|z|)`<.01&`Pr(>|z|)`>.001 ~ "**", 
+#                              `Pr(>|z|)`<.05&`Pr(>|z|)`>.01 ~ "*", 
+#                              TRUE ~ "n.s."))
+#   m6.tbl <- summary(m6)$coefficients %>% as_data_frame() %>% slice(2) %>%
+#     mutate(pstar = case_when(`Pr(>|z|)`<.001 ~ "***", 
+#                              `Pr(>|z|)`<.01&`Pr(>|z|)`>.001 ~ "**", 
+#                              `Pr(>|z|)`<.05&`Pr(>|z|)`>.01 ~ "*", 
+#                              TRUE ~ "n.s."))
+#   
+#   sig.tbl <- m5.tbl %>% bind_rows(m6.tbl) %>% 
+#     mutate(x=c(0.875, 1.875), 
+#            y=c(1.1, 1.05), 
+#            xend=c(1.125, 2.125), 
+#            annotation_str=paste(paste("p =", round(`Pr(>|z|)`, 3)), pstar), 
+#            annotation_str=ifelse(`Pr(>|z|)`>.1, "n.s.", annotation_str))
+#   
+#   p2 <- p1 + geom_signif(stat="identity", data=sig.tbl,
+#                          aes(x=x,xend=xend, y=y, yend=y, annotation=annotation_str, vjust=-.75)) +
+#     geom_signif(comparisons=list(c("A", "P")), annotations=m1.tbl$pstar,
+#                 y_position = 1.3, tip_length = 0.05, vjust=-.75) 
+#   return (p2)
+# }
+
+# effect of priming
+plot.base <- function(dat, semantic) {
+  if (semantic=="na") { dat.base = dat
+  } else { dat.base = dat %>% filter(verif_ans==semantic) } # control semantics or not }
+  
+  p0 <- dat.base %>%
+    ggbarplot(x = "syn_corr", y = "prop_isactive", add = "mean_ci",
+              fill = "syn_voice", color = "black",size = 1, 
+              palette = 'jco', position = position_dodge(0.8),
+              label = TRUE, label.pos = "in", lab.col =  "white", lab.size =  5, lab.nb.digits = 2, lab.vjust = 5)
+  return (p0)
+}
+
+# sd of raw proprotion
+plot.estimate <- function(p0, m2, semantic) {
+  if (semantic=="na") { dat.estimate = ggpredict(m2, c('syn_corr', 'syn_voice'))
+  } else { dat.estimate = ggpredict(m2, c('syn_corr', 'syn_voice', 'verif_ans')) %>% filter(facet==semantic) }
+  
+  p1 <- p0 + geom_point(data=dat.estimate, 
+                        mapping = aes(x=x, y=predicted, col = forcats::fct_rev(group), group = forcats::fct_rev(group)), 
+                        position = position_dodge(width = .8), size=3, 
+                        show.legend = F) 
+    #geom_errorbar(data=dat.estimate,
+    #              mapping = aes(x=x, y=predicted, col = forcats::fct_rev(group), 
+    #                            group = forcats::fct_rev(group), ymin = conf.low, ymax = conf.high),
+    #              position = position_dodge(width=0.8), width = .1)
+  return (p1)
+}
+
+
+plot.signif <- function(p1, m1, m3, m4) {
+  m1.tbl <- summary(m1)$coefficients %>% as_data_frame() %>% slice(3) %>%
+    mutate(pstar = case_when(`Pr(>|z|)`<.001 ~ "***", 
+                             `Pr(>|z|)`<.01&`Pr(>|z|)`>.001 ~ "**", 
+                             `Pr(>|z|)`<.05&`Pr(>|z|)`>.01 ~ "*", 
+                             TRUE ~ "n.s."))
+           
+  m3.tbl <- summary(m3)$coefficients %>% as_data_frame() %>% slice(2) %>%
+    mutate(pstar = case_when(`Pr(>|z|)`<.001 ~ "***", 
+                             `Pr(>|z|)`<.01&`Pr(>|z|)`>.001 ~ "**", 
+                             `Pr(>|z|)`<.05&`Pr(>|z|)`>.01 ~ "*", 
+                             TRUE ~ "n.s."),
+           syn_corr = "Correct")
+  m4.tbl <- summary(m4)$coefficients %>% as_data_frame() %>% slice(2) %>%
+    mutate(pstar = case_when(`Pr(>|z|)`<.001 ~ "***", 
+                             `Pr(>|z|)`<.01&`Pr(>|z|)`>.001 ~ "**", 
+                             `Pr(>|z|)`<.05&`Pr(>|z|)`>.01 ~ "*", 
+                             TRUE ~ "n.s."),
+           syn_corr = "Incorrect")
+  
+  sig.tbl <- m3.tbl %>% bind_rows(m4.tbl) %>% 
+    mutate(x=c(0.875, 1.875), 
+           y=c(1.1, 1.05), 
+           xend=c(1.125, 2.125), 
+           annotation_str=paste(paste("p =", round(`Pr(>|z|)`, 3)), pstar), 
+           annotation_str=ifelse(`Pr(>|z|)`>.1, "n.s.", annotation_str))
+  
+  p2 <- p1 + geom_signif(stat="identity", data=sig.tbl,
+                         aes(x=x, xend=xend, y=y, yend=y, group = syn_corr,
+                             annotation=pstar, vjust=-.75)) +
+    geom_signif(comparisons=list(c("Correct", "Incorrect")), annotations=m1.tbl$pstar, 
+                y_position = 1.3, tip_length = 0.05, vjust=-.75) 
+  return (p2)
+}
+
+#p1  <- plot.estimate(plot.base(df_prop.rmna, 'na'), m2, 'na')
+#plot.signif(p1, m1, m3, m4)
+```
+
+two way main effect plot
+```{r two way plot}
+
+plot.exp1 <- plot.signif(plot.estimate(plot.base(df_prop.rmna, 'na'), m2, 'na'), m1, m3, m4) + 
+  ylim(0, 1.4) + 
+  labs(x = "Prime grammaticality", 
+       y = "Mean proportion of active descriptions", 
+       fill = "Prime syntactic structure") + 
+  ggtitle("Experiment 1: The proportion of active descriptions as a function of prime conditions") 
+
+plot.exp1
+```
+
+
+three way main effect plot
+```{r three way plot}
+# plot rm na
+plot.exp1.1 <- plot.signif(plot.estimate(plot.base(df_prop.rmna, 1), m2, 1), m1.0, m5.1, m6.1) 
+plot.exp1.1 <- plot.exp1.1 + ylim(0, 1.4) + 
+  labs(x = "Syntactic Structure", 
+       y = "Proportion of Active descriptions",
+       color = 'Syntactic Correctness') + 
+  ggtitle("Exp1: SP effect of Active/Passive Constructions", subtitle = "Semantically Correct")
+
+plot.exp1.2 <- plot.signif(plot.estimate(plot.base(df_prop.rmna, 0), m2, 0), m1.1, m5.0, m6.0) 
+plot.exp1.2 <- plot.exp1.2 + ylim(0, 1.4) + 
+  labs(x = "Syntactic Structure", 
+       y = "Proportion of Active descriptions",
+       color = 'Syntactic Correctness') + 
+  ggtitle("Exp1: SP effect of Active/Passive Constructions", subtitle = "Semantically Incorrect")
+
+ggarrange(plot.exp1.1, plot.exp1.2)
+```
